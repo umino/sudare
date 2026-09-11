@@ -5,17 +5,21 @@ namespace Sudare.Views;
 
 public sealed class HighlightRule
 {
-    public HighlightRule(PatternMatcher matcher, Brush background)
+    public HighlightRule(PatternMatcher matcher, Brush background, bool paintsWholeLine = false)
     {
         Matcher = matcher;
         Background = background;
+        PaintsWholeLine = paintsWholeLine;
     }
 
     public PatternMatcher Matcher { get; }
     public Brush Background { get; }
+
+    /// <summary>一致した箇所ではなく、行全体の背景をこの色で塗るか。</summary>
+    public bool PaintsWholeLine { get; }
 }
 
-/// <summary>行テキスト内の強調表示範囲を計算する。</summary>
+/// <summary>行テキスト内の強調表示範囲と、行全体に敷く色を計算する。</summary>
 public sealed class HighlightRuleSet
 {
     /// <summary>これより長い行はハイライトしない（描画コストが釣り合わないため）。</summary>
@@ -40,16 +44,39 @@ public sealed class HighlightRuleSet
 
     public static IReadOnlyList<Brush> Palette { get; } = CreatePalette();
 
+    /// <summary>
+    /// 色番号から強調色を引く。範囲外の番号は畳んで返すので、
+    /// 手で書き換えたファイルや、将来パレットを減らした場合でも落ちない。
+    /// </summary>
+    public static Brush GetPaletteBrush(int index)
+    {
+        int normalized = index % Palette.Count;
+        if (normalized < 0) normalized += Palette.Count;
+        return Palette[normalized];
+    }
+
     public static readonly HighlightRuleSet Empty = new(Array.Empty<HighlightRule>());
 
+    /// <summary>一致した箇所だけを塗るルール。</summary>
     private readonly HighlightRule[] _rules;
 
-    public HighlightRuleSet(IReadOnlyList<HighlightRule> rules) => _rules = rules.ToArray();
+    /// <summary>行全体の背景を塗るルール。</summary>
+    private readonly HighlightRule[] _lineRules;
 
-    public bool IsEmpty => _rules.Length == 0;
+    public HighlightRuleSet(IReadOnlyList<HighlightRule> rules)
+    {
+        _rules = rules.Where(r => !r.PaintsWholeLine).ToArray();
+        _lineRules = rules.Where(r => r.PaintsWholeLine).ToArray();
+    }
+
+    public bool IsEmpty => _rules.Length == 0 && _lineRules.Length == 0;
+
+    /// <summary>一致箇所を塗るルールがあるか。無ければ本文は素のテキストのまま描ける。</summary>
+    public bool HasRangeRules => _rules.Length > 0;
 
     /// <summary>
     /// 強調範囲を左から順に、重なりのない形で返す。先に登録されたルールを優先する。
+    /// 行全体を塗るルールはここでは扱わない（<see cref="FindLineBrush"/>）。
     /// </summary>
     public List<(int Start, int Length, Brush Brush)> Compute(string text)
     {
@@ -91,6 +118,24 @@ public sealed class HighlightRuleSet
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 行全体に敷く色を返す。どのルールにも一致しなければ null。
+    /// 複数に一致した場合は、先に登録されたルール（リストで上にある行）を優先する。
+    /// </summary>
+    /// <remarks>
+    /// 抽出と同じく行全体で判定し、<see cref="MaxHighlightLength"/> では切らない。
+    /// 長い行の後半で一致して抽出に残った行が、色だけ付かないということがないようにするため。
+    /// 判定は画面に実体化された行に対してだけ走るので、行全体でも負担にはならない。
+    /// </remarks>
+    public Brush? FindLineBrush(string text)
+    {
+        foreach (var rule in _lineRules)
+        {
+            if (rule.Matcher.IsMatch(text)) return rule.Background;
+        }
+        return null;
     }
 
     private static Brush[] CreatePalette()

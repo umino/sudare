@@ -14,12 +14,18 @@ public sealed class PatternLine : ObservableObject
 {
     private string _text;
     private bool _isEnabled;
+    private int? _chosenColorIndex;
     private Brush? _color;
 
     public PatternLine(string text, bool isEnabled)
     {
         _text = text;
         _isEnabled = isEnabled;
+
+        // 右クリックメニューは ViewModel まで辿れないので、行自身にコマンドを持たせる。
+        // パラメータが無い（「自動」）ときは選択を解除して並び順の色に戻す。
+        ChooseColorCommand = new RelayCommand(p =>
+            ChosenColorIndex = MainViewModel.TryParseColorIndex(p, out int index) ? index : null);
     }
 
     public string Text
@@ -36,6 +42,15 @@ public sealed class PatternLine : ObservableObject
     }
 
     /// <summary>
+    /// 利用者が選んだ強調色のパレット番号。<c>null</c> なら並び順で自動的に決まる。
+    /// </summary>
+    public int? ChosenColorIndex
+    {
+        get => _chosenColorIndex;
+        set => SetProperty(ref _chosenColorIndex, value);
+    }
+
+    /// <summary>
     /// この行に割り当てられた強調色。ログ本文の色と同じものを指す。
     /// OFF の行と空行では <c>null</c>（色は付かない）。
     /// </summary>
@@ -44,6 +59,8 @@ public sealed class PatternLine : ObservableObject
         get => _color;
         set => SetProperty(ref _color, value);
     }
+
+    public RelayCommand ChooseColorCommand { get; }
 
     public bool IsBlank => Text.Trim().Length == 0;
 }

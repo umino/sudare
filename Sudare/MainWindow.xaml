@@ -136,6 +136,9 @@
                           IsCheckable="True" IsChecked="{Binding ShowLineNumbers, Mode=TwoWay}" />
                 <MenuItem Header="一致箇所を強調(_H)"
                           IsCheckable="True" IsChecked="{Binding HighlightMatches, Mode=TwoWay}" />
+                <MenuItem Header="行全体に色を付ける(_R)"
+                          IsCheckable="True" IsChecked="{Binding HighlightWholeLine, Mode=TwoWay}"
+                          IsEnabled="{Binding HighlightMatches}" />
                 <MenuItem Header="抽出条件ペイン(_P)"
                           IsCheckable="True" IsChecked="{Binding FilterPaneVisible, Mode=TwoWay}" />
                 <Separator />
@@ -379,7 +382,10 @@
                         <WrapPanel Margin="0,8,0,0">
                             <CheckBox Content="折り返し" IsChecked="{Binding WordWrap}" Margin="0,0,12,4" />
                             <CheckBox Content="行番号" IsChecked="{Binding ShowLineNumbers}" Margin="0,0,12,4" />
-                            <CheckBox Content="一致箇所を強調" IsChecked="{Binding HighlightMatches}" Margin="0,0,0,4" />
+                            <CheckBox Content="一致箇所を強調" IsChecked="{Binding HighlightMatches}" Margin="0,0,12,4" />
+                            <CheckBox Content="行全体に色を付ける" IsChecked="{Binding HighlightWholeLine}" Margin="0,0,0,4"
+                                      IsEnabled="{Binding HighlightMatches}"
+                                      ToolTip="一致した箇所だけでなく、行全体の背景を「含む」の色で塗ります。検索語は従来どおり一致箇所だけを強調します。" />
                         </WrapPanel>
                     </StackPanel>
                 </GroupBox>

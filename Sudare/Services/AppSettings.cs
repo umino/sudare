@@ -7,6 +7,13 @@ public sealed class FilterPreset
 {
     public string Name { get; set; } = string.Empty;
     public string Include { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <see cref="Include"/> の空でない行と同じ並びの強調色番号。<c>null</c> は並び順による自動。
+    /// 色を持たない古いプリセットは、すべて自動として読む。
+    /// </summary>
+    public List<int?> IncludeColors { get; set; } = new();
+
     public string Exclude { get; set; } = string.Empty;
     public MatchMode Mode { get; set; } = MatchMode.Plain;
     public bool CaseSensitive { get; set; }
@@ -32,6 +39,10 @@ public sealed class AppSettings
     public bool FilterPaneVisible { get; set; } = true;
 
     public string IncludeText { get; set; } = string.Empty;
+
+    /// <summary><see cref="IncludeText"/> の空でない行と同じ並びの強調色番号。<c>null</c> は自動。</summary>
+    public List<int?> IncludeColors { get; set; } = new();
+
     public string ExcludeText { get; set; } = string.Empty;
     public MatchMode Mode { get; set; } = MatchMode.Plain;
     public bool CaseSensitive { get; set; }
@@ -49,6 +60,10 @@ public sealed class AppSettings
     public bool WordWrap { get; set; }
     public bool ShowLineNumbers { get; set; } = true;
     public bool HighlightMatches { get; set; } = true;
+
+    /// <summary>一致箇所ではなく、行全体の背景を「含む」の色で塗るか。</summary>
+    public bool HighlightWholeLine { get; set; }
+
     public double FontSize { get; set; } = 13;
     public string FontFamily { get; set; } = "Consolas, MS Gothic";
 

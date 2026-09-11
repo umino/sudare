@@ -35,6 +35,13 @@ public sealed class ProjectFile
     public string EncodingKey { get; set; } = string.Empty;
 
     public string IncludeText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <see cref="IncludeText"/> の空でない行と同じ並びの強調色番号。<c>null</c> は並び順による自動。
+    /// 色を持たない旧形式や、数が足りない場合は自動として読む。
+    /// </summary>
+    public List<int?> IncludeColors { get; set; } = new();
+
     public string ExcludeText { get; set; } = string.Empty;
     public MatchMode Mode { get; set; } = MatchMode.Plain;
     public bool CaseSensitive { get; set; }
@@ -58,6 +65,10 @@ public sealed class ProjectFile
     public bool WordWrap { get; set; }
     public bool ShowLineNumbers { get; set; } = true;
     public bool HighlightMatches { get; set; } = true;
+
+    /// <summary>一致箇所ではなく、行全体の背景を「含む」の色で塗るか。</summary>
+    public bool HighlightWholeLine { get; set; }
+
     public double FontSize { get; set; } = 13;
     public string FontFamily { get; set; } = string.Empty;
 

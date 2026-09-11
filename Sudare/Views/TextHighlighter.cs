@@ -36,7 +36,8 @@ public static class TextHighlighter
         string text = GetSourceText(textBlock) ?? string.Empty;
         var rules = GetRules(textBlock);
 
-        if (rules is null || rules.IsEmpty || text.Length == 0)
+        // 行全体を塗るだけのときは背景を行コンテナ側で塗るので、本文は素のテキストでよい
+        if (rules is null || !rules.HasRangeRules || text.Length == 0)
         {
             // Text を直接設定すると Inlines は自動的に破棄される（最速の経路）
             textBlock.Text = text;

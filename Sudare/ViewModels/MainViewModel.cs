@@ -308,9 +308,13 @@ public sealed class MainViewModel : ObservableObject
     /// <summary><see cref="IncludeText"/> からリストを組み直す。</summary>
     private void RebuildIncludePatterns()
     {
+        // テキスト欄での編集は 1 文字ごとにここを通るので、選んだ色は引き継がないと消えてしまう
+        var previous = IncludePatterns.Where(p => !p.IsBlank).ToList();
+
         foreach (var line in IncludePatterns) line.PropertyChanged -= OnPatternLineChanged;
         IncludePatterns.Clear();
 
+        var rebuilt = new List<PatternLine>();
         foreach (var raw in _includeText.Split('\n'))
         {
             var trimmed = raw.Trim('\r', ' ', '\t');
@@ -318,16 +322,60 @@ public sealed class MainViewModel : ObservableObject
 
             bool enabled = trimmed[0] != '#';
             string text = enabled ? trimmed : trimmed[1..].TrimStart();
-            Add(new PatternLine(text, enabled));
+            rebuilt.Add(new PatternLine(text, enabled));
+        }
+
+        // 購読前に色を入れておく（ここで変更通知が走ると、組み立て途中のリストを書き戻してしまう）
+        CarryOverChosenColors(previous, rebuilt.Where(p => !p.IsBlank).ToList());
+
+        foreach (var line in rebuilt)
+        {
+            line.PropertyChanged += OnPatternLineChanged;
+            IncludePatterns.Add(line);
         }
 
         EnsureTrailingBlank();
         AssignPatternColors();
+    }
 
-        void Add(PatternLine line)
+    /// <summary>
+    /// 組み直す前の行で選ばれていた色を、組み直した行へ引き継ぐ。
+    /// </summary>
+    /// <remarks>
+    /// まずは同じ文言の行へ渡す。行を挿入・削除して位置がずれても、色がパターンに付いて回る。
+    /// 文言で見つからない行は、行数が変わっていないときに限り同じ位置から受け取る
+    /// （1 行の文言を書き換えている途中なので、その行の色を保つ）。
+    /// </remarks>
+    private static void CarryOverChosenColors(List<PatternLine> previous, List<PatternLine> rebuilt)
+    {
+        if (!previous.Any(p => p.ChosenColorIndex is not null)) return;
+
+        var taken = new bool[previous.Count];
+        var unmatched = new List<int>();
+
+        for (int i = 0; i < rebuilt.Count; i++)
         {
-            line.PropertyChanged += OnPatternLineChanged;
-            IncludePatterns.Add(line);
+            int match = -1;
+            for (int j = 0; j < previous.Count; j++)
+            {
+                if (taken[j] || !string.Equals(previous[j].Text, rebuilt[i].Text, StringComparison.Ordinal)) continue;
+                match = j;
+                break;
+            }
+
+            if (match < 0)
+            {
+                unmatched.Add(i);
+                continue;
+            }
+            taken[match] = true;
+            rebuilt[i].ChosenColorIndex = previous[match].ChosenColorIndex;
+        }
+
+        if (previous.Count != rebuilt.Count) return;
+        foreach (int i in unmatched)
+        {
+            if (!taken[i]) rebuilt[i].ChosenColorIndex = previous[i].ChosenColorIndex;
         }
     }
 
@@ -352,6 +400,16 @@ public sealed class MainViewModel : ObservableObject
     private void OnPatternLineChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(PatternLine.Color)) return;
+
+        if (e.PropertyName == nameof(PatternLine.ChosenColorIndex))
+        {
+            // 色は抽出結果を変えないので、照合はやり直さずに本文の色だけ塗り直す
+            AssignPatternColors();
+            UpdateHighlight();
+            // プリセットやプロジェクトを読み込んでいる途中で合わせると、選択中のプリセットが外れてしまう
+            if (!_initializing) SyncSelectedPresetWithConditions();
+            return;
+        }
 
         if (sender is PatternLine line && e.PropertyName == nameof(PatternLine.Text) && line.Text.Contains('\n'))
         {
@@ -425,12 +483,11 @@ public sealed class MainViewModel : ObservableObject
     /// 各行に強調色を割り当てる。
     /// </summary>
     /// <remarks>
-    /// 色は「空でない行の並び順」で決める。OFF の行も順番だけは数に入れるので、
-    /// チェックを外しても他の行の色がずれない。
+    /// 利用者が色を選んだ行はその色、選んでいない行は「空でない行の並び順」で決める。
+    /// OFF の行も順番だけは数に入れるので、チェックを外しても他の行の色がずれない。
     /// </remarks>
     private void AssignPatternColors()
     {
-        var palette = HighlightRuleSet.Palette;
         int ordinal = 0;
         foreach (var line in IncludePatterns)
         {
@@ -439,9 +496,50 @@ public sealed class MainViewModel : ObservableObject
                 line.Color = null;
                 continue;
             }
-            line.Color = line.IsEnabled ? palette[ordinal % palette.Count] : null;
+            line.Color = line.IsEnabled
+                ? HighlightRuleSet.GetPaletteBrush(line.ChosenColorIndex ?? ordinal)
+                : null;
             ordinal++;
         }
+    }
+
+    /// <summary>
+    /// 保存されていた色を、空でない行の並びに沿って割り当てる。足りない分は自動に戻す。
+    /// <see cref="IncludeText"/> を入れて行を組み直したあとに呼ぶこと。
+    /// </summary>
+    private void ApplyIncludeColors(IReadOnlyList<int?>? colors)
+    {
+        int ordinal = 0;
+        foreach (var line in IncludePatterns)
+        {
+            if (line.IsBlank) continue;
+            line.ChosenColorIndex = colors is not null && ordinal < colors.Count ? colors[ordinal] : null;
+            ordinal++;
+        }
+    }
+
+    /// <summary>
+    /// 空でない行の並びで、選ばれている色を返す。保存用。
+    /// 末尾の「自動」は省くので、1 つも選んでいなければ空になる。
+    /// </summary>
+    private List<int?> CurrentIncludeColors()
+    {
+        var colors = IncludePatterns.Where(p => !p.IsBlank).Select(p => p.ChosenColorIndex).ToList();
+        while (colors.Count > 0 && colors[^1] is null) colors.RemoveAt(colors.Count - 1);
+        return colors;
+    }
+
+    /// <summary>色の並びが同じか。足りない分は「自動」とみなす（古いプリセットは空のため）。</summary>
+    private static bool SameIncludeColors(IReadOnlyList<int?>? a, IReadOnlyList<int?> b)
+    {
+        a ??= Array.Empty<int?>();
+        for (int i = 0; i < Math.Max(a.Count, b.Count); i++)
+        {
+            int? left = i < a.Count ? a[i] : null;
+            int? right = i < b.Count ? b[i] : null;
+            if (left != right) return false;
+        }
+        return true;
     }
 
     private void RemovePattern(object? parameter)
@@ -488,6 +586,20 @@ public sealed class MainViewModel : ObservableObject
     {
         get => _highlightMatches;
         set { if (SetProperty(ref _highlightMatches, value)) UpdateHighlight(); }
+    }
+
+    private bool _highlightWholeLine;
+
+    /// <summary>
+    /// 「含む」に一致した行を、一致箇所ではなく行全体の背景で塗るか。
+    /// </summary>
+    /// <remarks>
+    /// 検索語は従来どおり一致箇所だけを塗る（行の色の上に重ねて、どこに一致したかを示す）。
+    /// </remarks>
+    public bool HighlightWholeLine
+    {
+        get => _highlightWholeLine;
+        set { if (SetProperty(ref _highlightWholeLine, value)) UpdateHighlight(); }
     }
 
     private double _fontSize = 13;
@@ -681,7 +793,8 @@ public sealed class MainViewModel : ObservableObject
         && preset.CaseSensitive == CaseSensitive
         && preset.IncludeLogic == IncludeLogic
         && preset.ExcludeLogic == ExcludeLogic
-        && preset.IncludeHighlightOnly == IncludeHighlightOnly;
+        && preset.IncludeHighlightOnly == IncludeHighlightOnly
+        && SameIncludeColors(preset.IncludeColors, CurrentIncludeColors());
 
     private void ApplyPreset(FilterPreset preset)
     {
@@ -690,6 +803,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             IncludeText = preset.Include;
+            ApplyIncludeColors(preset.IncludeColors);
             ExcludeText = preset.Exclude;
             Mode = preset.Mode;
             CaseSensitive = preset.CaseSensitive;
@@ -717,6 +831,7 @@ public sealed class MainViewModel : ObservableObject
 
         preset.Name = name;
         preset.Include = IncludeText;
+        preset.IncludeColors = CurrentIncludeColors();
         preset.Exclude = ExcludeText;
         preset.Mode = Mode;
         preset.CaseSensitive = CaseSensitive;
@@ -1004,6 +1119,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             IncludeText = project.IncludeText;
+            ApplyIncludeColors(project.IncludeColors);
             ExcludeText = project.ExcludeText;
             Mode = project.Mode;
             CaseSensitive = project.CaseSensitive;
@@ -1015,6 +1131,7 @@ public sealed class MainViewModel : ObservableObject
             WordWrap = project.WordWrap;
             ShowLineNumbers = project.ShowLineNumbers;
             HighlightMatches = project.HighlightMatches;
+            HighlightWholeLine = project.HighlightWholeLine;
             if (project.FontSize >= 6) FontSize = project.FontSize;
             if (!string.IsNullOrWhiteSpace(project.FontFamily)) FontFamilyName = project.FontFamily;
             SearchText = project.SearchText;
@@ -1145,6 +1262,7 @@ public sealed class MainViewModel : ObservableObject
             LogFilePath = _document.FilePath,
             EncodingKey = SelectedEncoding.Key,
             IncludeText = IncludeText,
+            IncludeColors = CurrentIncludeColors(),
             ExcludeText = ExcludeText,
             Mode = Mode,
             CaseSensitive = CaseSensitive,
@@ -1157,6 +1275,7 @@ public sealed class MainViewModel : ObservableObject
             WordWrap = WordWrap,
             ShowLineNumbers = ShowLineNumbers,
             HighlightMatches = HighlightMatches,
+            HighlightWholeLine = HighlightWholeLine,
             FontSize = FontSize,
             FontFamily = FontFamilyName,
             SearchText = SearchText,
@@ -1684,7 +1803,8 @@ public sealed class MainViewModel : ObservableObject
             if (!line.IsEnabled || line.IsBlank || line.Color is null) continue;
             try
             {
-                rules.Add(new HighlightRule(PatternMatcher.Create(line.Text, Mode, CaseSensitive), line.Color));
+                rules.Add(new HighlightRule(PatternMatcher.Create(line.Text, Mode, CaseSensitive), line.Color,
+                                            paintsWholeLine: HighlightWholeLine));
             }
             catch (FilterPatternException)
             {
@@ -1857,6 +1977,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             IncludeText = _settings.IncludeText;
+            ApplyIncludeColors(_settings.IncludeColors);
             ExcludeText = _settings.ExcludeText;
             Mode = _settings.Mode;
             CaseSensitive = _settings.CaseSensitive;
@@ -1869,6 +1990,7 @@ public sealed class MainViewModel : ObservableObject
             WordWrap = _settings.WordWrap;
             ShowLineNumbers = _settings.ShowLineNumbers;
             HighlightMatches = _settings.HighlightMatches;
+            HighlightWholeLine = _settings.HighlightWholeLine;
             FontSize = _settings.FontSize <= 0 ? 13 : _settings.FontSize;
             FontFamilyName = string.IsNullOrWhiteSpace(_settings.FontFamily) ? "Consolas, MS Gothic" : _settings.FontFamily;
             FilterPaneVisible = _settings.FilterPaneVisible;
@@ -1884,6 +2006,7 @@ public sealed class MainViewModel : ObservableObject
     public void SaveSettings()
     {
         _settings.IncludeText = IncludeText;
+        _settings.IncludeColors = CurrentIncludeColors();
         _settings.ExcludeText = ExcludeText;
         _settings.Mode = Mode;
         _settings.CaseSensitive = CaseSensitive;
@@ -1896,6 +2019,7 @@ public sealed class MainViewModel : ObservableObject
         _settings.WordWrap = WordWrap;
         _settings.ShowLineNumbers = ShowLineNumbers;
         _settings.HighlightMatches = HighlightMatches;
+        _settings.HighlightWholeLine = HighlightWholeLine;
         _settings.FontSize = FontSize;
         _settings.FontFamily = FontFamilyName;
         _settings.FilterPaneVisible = FilterPaneVisible;

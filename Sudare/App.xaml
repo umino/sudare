@@ -10,7 +10,19 @@
             <v:NullToVisibilityConverter x:Key="NullToVisibility" />
             <v:NullToVisibleConverter x:Key="NullToVisible" />
             <v:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
+            <v:NullToBooleanConverter x:Key="NullToBool" />
+            <v:RowBackgroundConverter x:Key="RowBackground" />
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+            <!-- メニュー項目の横に出す色見本 -->
+            <Style x:Key="MenuSwatch" TargetType="Border">
+                <Setter Property="Width" Value="14" />
+                <Setter Property="Height" Value="14" />
+                <Setter Property="CornerRadius" Value="2" />
+                <Setter Property="BorderBrush" Value="#FFB0B0B0" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="SnapsToDevicePixels" Value="True" />
+            </Style>
 
             <Style x:Key="SectionHeader" TargetType="TextBlock">
                 <Setter Property="FontWeight" Value="SemiBold" />
@@ -60,6 +72,8 @@
                                 <DataTrigger Binding="{Binding Text}" Value="">
                                     <Setter TargetName="Check" Property="Visibility" Value="Collapsed" />
                                     <Setter TargetName="Box" Property="BorderBrush" Value="#FFD0D0D0" />
+                                    <!-- パターンが無いと色を付ける先が無いので、色のメニューも出さない -->
+                                    <Setter Property="ContextMenuService.IsEnabled" Value="False" />
                                 </DataTrigger>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="Box" Property="BorderBrush" Value="#FF4A90D9" />
@@ -85,7 +99,81 @@
 
                     <CheckBox Grid.Column="0" Style="{StaticResource PatternToggle}"
                               IsChecked="{Binding IsEnabled}"
-                              ToolTip="この行を抽出条件として使うかどうか。色はログ本文の強調色と同じです。" />
+                              ToolTip="この行を抽出条件として使うかどうか。色はログ本文の強調色と同じです。右クリックで色を変えられます。">
+                        <!--
+                            色見本を右クリックして色を選ぶ。チェックが付くのは自分で選んだ色だけで、
+                            何も選んでいなければ「自動（並び順）」に付く。
+                        -->
+                        <CheckBox.ContextMenu>
+                            <ContextMenu>
+                                <ContextMenu.Resources>
+                                    <Style TargetType="MenuItem">
+                                        <Setter Property="Command" Value="{Binding ChooseColorCommand}" />
+                                    </Style>
+                                </ContextMenu.Resources>
+                                <MenuItem Header="黄" CommandParameter="0"
+                                          IsChecked="{Binding ChosenColorIndex, Mode=OneWay, Converter={StaticResource EnumBool}, ConverterParameter=0}">
+                                    <MenuItem.Icon>
+                                        <Border Style="{StaticResource MenuSwatch}"
+                                                Background="{Binding Source={x:Static v:HighlightRuleSet.Palette}, Path=[0]}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="緑" CommandParameter="1"
+                                          IsChecked="{Binding ChosenColorIndex, Mode=OneWay, Converter={StaticResource EnumBool}, ConverterParameter=1}">
+                                    <MenuItem.Icon>
+                                        <Border Style="{StaticResource MenuSwatch}"
+                                                Background="{Binding Source={x:Static v:HighlightRuleSet.Palette}, Path=[1]}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="青" CommandParameter="2"
+                                          IsChecked="{Binding ChosenColorIndex, Mode=OneWay, Converter={StaticResource EnumBool}, ConverterParameter=2}">
+                                    <MenuItem.Icon>
+                                        <Border Style="{StaticResource MenuSwatch}"
+                                                Background="{Binding Source={x:Static v:HighlightRuleSet.Palette}, Path=[2]}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="橙" CommandParameter="3"
+                                          IsChecked="{Binding ChosenColorIndex, Mode=OneWay, Converter={StaticResource EnumBool}, ConverterParameter=3}">
+                                    <MenuItem.Icon>
+                                        <Border Style="{StaticResource MenuSwatch}"
+                                                Background="{Binding Source={x:Static v:HighlightRuleSet.Palette}, Path=[3]}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="紫" CommandParameter="4"
+                                          IsChecked="{Binding ChosenColorIndex, Mode=OneWay, Converter={StaticResource EnumBool}, ConverterParameter=4}">
+                                    <MenuItem.Icon>
+                                        <Border Style="{StaticResource MenuSwatch}"
+                                                Background="{Binding Source={x:Static v:HighlightRuleSet.Palette}, Path=[4]}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="水色" CommandParameter="5"
+                                          IsChecked="{Binding ChosenColorIndex, Mode=OneWay, Converter={StaticResource EnumBool}, ConverterParameter=5}">
+                                    <MenuItem.Icon>
+                                        <Border Style="{StaticResource MenuSwatch}"
+                                                Background="{Binding Source={x:Static v:HighlightRuleSet.Palette}, Path=[5]}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="桃" CommandParameter="6"
+                                          IsChecked="{Binding ChosenColorIndex, Mode=OneWay, Converter={StaticResource EnumBool}, ConverterParameter=6}">
+                                    <MenuItem.Icon>
+                                        <Border Style="{StaticResource MenuSwatch}"
+                                                Background="{Binding Source={x:Static v:HighlightRuleSet.Palette}, Path=[6]}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="黄緑" CommandParameter="7"
+                                          IsChecked="{Binding ChosenColorIndex, Mode=OneWay, Converter={StaticResource EnumBool}, ConverterParameter=7}">
+                                    <MenuItem.Icon>
+                                        <Border Style="{StaticResource MenuSwatch}"
+                                                Background="{Binding Source={x:Static v:HighlightRuleSet.Palette}, Path=[7]}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator />
+                                <MenuItem Header="自動（並び順）"
+                                          IsChecked="{Binding ChosenColorIndex, Mode=OneWay, Converter={StaticResource NullToBool}}"
+                                          ToolTip="選んだ色を解除し、並び順で決まる色に戻します" />
+                            </ContextMenu>
+                        </CheckBox.ContextMenu>
+                    </CheckBox>
 
                     <Grid Grid.Column="1">
                         <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
@@ -152,10 +240,21 @@
                     </Setter.Value>
                 </Setter>
                 <!--
-                    横スクロールで左端の帯が見えなくなっても分かるように、行全体をその色で淡く塗る。
-                    マーカーが無い行は null なので Transparent（＝既定の背景）になる。
+                    行全体の背景。
+                      「行全体に色を付ける」で一致した行 … その「含む」の色
+                      マーカーの付いた行 … 横スクロールで左端の帯が見えなくなっても分かるよう、マーカーの色で淡く塗る
+                      どちらでもない行 … Transparent（＝既定の背景）
+                    強調ルールが差し替わると Tag.Highlight が変わるので、実体化済みの行も塗り直される。
                 -->
-                <Setter Property="Background" Value="{Binding MarkerRowBrush, TargetNullValue=Transparent}" />
+                <Setter Property="Background">
+                    <Setter.Value>
+                        <MultiBinding Converter="{StaticResource RowBackground}">
+                            <Binding Path="Text" />
+                            <Binding Path="Tag.Highlight" RelativeSource="{RelativeSource AncestorType=ListBox}" />
+                            <Binding Path="MarkerRowBrush" />
+                        </MultiBinding>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <DataTemplate x:Key="LineTemplate">

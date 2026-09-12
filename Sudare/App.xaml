@@ -24,6 +24,43 @@
                 <Setter Property="SnapsToDevicePixels" Value="True" />
             </Style>
 
+            <!--
+                操作バーの「なし / 一致箇所 / 行全体」のような、地続きに並べる選択肢。
+                ラジオボタンの丸を消して、押せる帯として見せる。
+            -->
+            <Style x:Key="BarSegment" TargetType="RadioButton">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#FF4A90D9" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </Trigger>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="IsMouseOver" Value="True" />
+                                        <Condition Property="IsChecked" Value="False" />
+                                    </MultiTrigger.Conditions>
+                                    <Setter TargetName="Bd" Property="Background" Value="#FFE8F0F8" />
+                                </MultiTrigger>
+                                <!-- キーボードで来たときも、どこにいるか分かるようにする -->
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#FF1B3D5C" />
+                                    <Setter TargetName="Bd" Property="BorderThickness" Value="1" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <Style x:Key="SectionHeader" TargetType="TextBlock">
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="Margin" Value="0,0,0,2" />

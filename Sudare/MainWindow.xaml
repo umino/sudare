@@ -64,6 +64,10 @@
 
     <DockPanel>
 
+        <!--
+            メニューは「めったに使わないものも含めて、すべてがある場所」。
+            操作バーは「読みながら手が伸びるものだけ」。同じコマンドを両方に置かない。
+        -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="ファイル(_F)">
                 <MenuItem Header="プロジェクトを開く(_J)..." InputGestureText="Ctrl+Shift+O"
@@ -87,7 +91,7 @@
                         </Style>
                     </MenuItem.ItemContainerStyle>
                 </MenuItem>
-                <MenuItem Header="再読み込み(_R)" InputGestureText="F5" Command="{Binding ReloadCommand}" />
+                <MenuItem Header="再読み込み(_L)" InputGestureText="F5" Command="{Binding ReloadCommand}" />
                 <MenuItem Header="閉じる(_C)" Command="{Binding CloseFileCommand}" />
                 <Separator />
                 <MenuItem Header="抽出結果を保存(_S)..." InputGestureText="Ctrl+S" Command="{Binding ExportCommand}" />
@@ -101,30 +105,18 @@
                 <MenuItem Header="行番号付きでコピー(_N)"
                           Command="{x:Static local:MainWindow.CopyWithLineNumbersCommand}" />
                 <Separator />
-                <MenuItem Header="検索ボックスへ(_F)" InputGestureText="Ctrl+F"
+                <MenuItem Header="検索(_F)" InputGestureText="Ctrl+F"
                           Command="{x:Static local:MainWindow.FocusSearchCommand}" />
                 <MenuItem Header="次を検索(_N)" InputGestureText="F3" Command="{Binding FindNextCommand}" />
                 <MenuItem Header="前を検索(_P)" InputGestureText="Shift+F3" Command="{Binding FindPreviousCommand}" />
                 <MenuItem Header="指定行へ移動(_G)" InputGestureText="Ctrl+G"
-                          Command="{x:Static local:MainWindow.FocusGoToCommand}" />
+                          Command="{x:Static local:MainWindow.FocusGoToCommand}"
+                          ToolTip="検索欄に : を入れます。続けて行番号を打つとその行へ移動します。" />
                 <Separator />
+                <!-- 色の指定は本文と一覧の右クリック（と Ctrl+1〜6）に一本化した -->
                 <MenuItem Header="マーカーの ON/OFF(_M)" InputGestureText="Ctrl+M"
-                          Command="{x:Static local:MainWindow.ToggleMarkerCommand}" />
-                <MenuItem Header="色を指定してマーカー(_C)"
-                          ToolTip="選択している行にその色でマーカーを付けます。同じ色をもう一度選ぶと外れます。">
-                    <MenuItem Header="橙" InputGestureText="Ctrl+1"
-                              Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="0" />
-                    <MenuItem Header="赤" InputGestureText="Ctrl+2"
-                              Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="1" />
-                    <MenuItem Header="黄" InputGestureText="Ctrl+3"
-                              Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="2" />
-                    <MenuItem Header="緑" InputGestureText="Ctrl+4"
-                              Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="3" />
-                    <MenuItem Header="青" InputGestureText="Ctrl+5"
-                              Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="4" />
-                    <MenuItem Header="紫" InputGestureText="Ctrl+6"
-                              Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="5" />
-                </MenuItem>
+                          Command="{x:Static local:MainWindow.ToggleMarkerCommand}"
+                          ToolTip="色を指定して付けるには Ctrl+1〜6、または本文を右クリックします。" />
                 <MenuItem Header="マーカーをすべて解除" Command="{Binding ClearMarkersCommand}" />
                 <MenuItem Header="前後の展開をすべて解除" Command="{Binding ClearExpansionsCommand}" />
             </MenuItem>
@@ -134,14 +126,16 @@
                           IsCheckable="True" IsChecked="{Binding WordWrap, Mode=TwoWay}" />
                 <MenuItem Header="行番号を表示(_L)" InputGestureText="Ctrl+L"
                           IsCheckable="True" IsChecked="{Binding ShowLineNumbers, Mode=TwoWay}" />
-                <MenuItem Header="一致箇所を強調(_H)"
-                          IsCheckable="True" IsChecked="{Binding HighlightMatches, Mode=TwoWay}" />
-                <MenuItem Header="行全体に色を付ける(_R)"
-                          IsCheckable="True" IsChecked="{Binding HighlightWholeLine, Mode=TwoWay}"
-                          IsEnabled="{Binding HighlightMatches}" />
-                <MenuItem Header="抽出条件ペイン(_P)"
-                          IsCheckable="True" IsChecked="{Binding FilterPaneVisible, Mode=TwoWay}" />
                 <Separator />
+                <MenuItem Header="強調しない(_N)" IsCheckable="True"
+                          IsChecked="{Binding HighlightMode, Converter={StaticResource EnumBool}, ConverterParameter=None}" />
+                <MenuItem Header="一致箇所を強調(_H)" IsCheckable="True"
+                          IsChecked="{Binding HighlightMode, Converter={StaticResource EnumBool}, ConverterParameter=Match}" />
+                <MenuItem Header="行全体に色を付ける(_R)" IsCheckable="True"
+                          IsChecked="{Binding HighlightMode, Converter={StaticResource EnumBool}, ConverterParameter=WholeLine}" />
+                <Separator />
+                <MenuItem Header="条件ペイン(_P)"
+                          IsCheckable="True" IsChecked="{Binding FilterPaneVisible, Mode=TwoWay}" />
                 <MenuItem Header="文字を大きく(_I)" InputGestureText="Ctrl++" Command="{Binding IncreaseFontCommand}" />
                 <MenuItem Header="文字を小さく(_D)" InputGestureText="Ctrl+-" Command="{Binding DecreaseFontCommand}" />
                 <MenuItem Header="標準の大きさ(_0)" InputGestureText="Ctrl+0" Command="{Binding ResetFontCommand}" />
@@ -152,45 +146,199 @@
             </MenuItem>
         </Menu>
 
-        <ToolBarTray DockPanel.Dock="Top" IsLocked="True">
-            <ToolBar>
-                <Button Content="開く" Command="{Binding OpenCommand}" ToolTip="ファイルを開く (Ctrl+O)" />
-                <Button Content="クリップボード" Command="{Binding PasteFromClipboardCommand}"
-                        ToolTip="クリップボードのテキストを読み込む (Ctrl+Shift+V)" />
-                <Button Content="再読込" Command="{Binding ReloadCommand}" ToolTip="再読み込み (F5)" />
-                <Separator />
-                <Button Content="プロジェクトを開く" Command="{Binding OpenProjectCommand}"
-                        ToolTip="保存した抽出条件・マーカーを読み込む (Ctrl+Shift+O)" />
-                <Button Content="プロジェクトを保存" Command="{Binding SaveProjectCommand}"
-                        ToolTip="抽出条件・マーカー・表示設定を保存する (Ctrl+Shift+S)" />
-                <Separator />
-                <TextBlock Text="文字コード" VerticalAlignment="Center" Margin="4,0" />
-                <ComboBox ItemsSource="{Binding Encodings}"
-                          SelectedItem="{Binding SelectedEncoding}"
-                          DisplayMemberPath="DisplayName"
-                          Width="150"
-                          ToolTip="選択すると、その文字コードで読み直します" />
-                <Separator />
-                <ToggleButton Content="折り返し" IsChecked="{Binding WordWrap, Mode=TwoWay}" ToolTip="Ctrl+W" />
-                <ToggleButton Content="行番号" IsChecked="{Binding ShowLineNumbers, Mode=TwoWay}" ToolTip="Ctrl+L" />
-                <ToggleButton Content="強調" IsChecked="{Binding HighlightMatches, Mode=TwoWay}" />
-                <Separator />
-                <ComboBox IsEditable="True" Width="150" Text="{Binding FontFamilyName, UpdateSourceTrigger=LostFocus}"
-                          ToolTip="表示フォント">
-                    <sys:String>Consolas, MS Gothic</sys:String>
-                    <sys:String>Cascadia Mono, MS Gothic</sys:String>
-                    <sys:String>MS Gothic</sys:String>
-                    <sys:String>BIZ UDゴシック</sys:String>
-                    <sys:String>Meiryo</sys:String>
-                    <sys:String>Yu Gothic UI</sys:String>
-                </ComboBox>
-                <Button Content="A-" Command="{Binding DecreaseFontCommand}" ToolTip="文字を小さく (Ctrl+-)" />
-                <Button Content="A+" Command="{Binding IncreaseFontCommand}" ToolTip="文字を大きく (Ctrl++)" />
-                <Separator />
-                <Button Content="抽出結果を保存" Command="{Binding ExportCommand}" ToolTip="Ctrl+S" />
-                <Button Content="中止" Command="{Binding CancelCommand}" ToolTip="実行中の処理を中止 (Esc)" />
-            </ToolBar>
-        </ToolBarTray>
+        <!-- ===== 操作バー（旧ツールバー + 旧検索バーを 1 行に畳んだもの） ===== -->
+        <Border DockPanel.Dock="Top" Background="#FFFAFAF8"
+                BorderBrush="#FFDFE0DA" BorderThickness="0,0,0,1" Padding="6,4"
+                ClipToBounds="True">
+            <!--
+                左（開いているログと選んだ項目）と右（検索・表示）を、間を伸ばす 1 本の桟で分ける。
+                DockPanel だと中身の希望幅にバーごと引きずられて右側が画面外へ出るので、
+                幅を必ず親に収める Grid にしている。
+            -->
+            <Grid>
+                <!--
+                    列に分けず、1 つのセルに左寄せと右寄せで置く。
+                    Auto 列を並べると Grid の希望幅が各列の合計になり、親より広くなった分だけ
+                    右端が画面外へ出てしまう。1 セルなら希望幅は「左右の広いほう」で済む。
+                -->
+
+                <!-- 右: 検索（行ジャンプもここ）と、表示ポップアップ -->
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Grid Width="230">
+                        <TextBox x:Name="SearchBox" VerticalAlignment="Center"
+                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 KeyDown="SearchBox_KeyDown"
+                                 ToolTip="表示中の行から検索します。「:1234」と入れるとその行へ移動します（検索方法は条件の設定に従います）" />
+                        <TextBlock Text="検索　:1234 で行へ移動" Margin="6,0,0,0" VerticalAlignment="Center"
+                                   IsHitTestVisible="False" Foreground="#FFB0B0B0" FontSize="11"
+                                   Visibility="{Binding SearchText, Converter={StaticResource NullToVisible}}" />
+                    </Grid>
+                    <Button Content="◀" Width="26" Margin="4,0,0,0" Command="{Binding FindPreviousCommand}"
+                            ToolTip="前を検索 (Shift+F3)" />
+                    <Button Content="▶" Width="26" Margin="4,0,0,0" Command="{Binding FindNextCommand}"
+                            ToolTip="次を検索 (F3)" />
+
+                    <ToggleButton x:Name="ViewMenuButton" Content="表示 ▾" Padding="8,2" Margin="6,0,0,0"
+                                  ToolTip="折り返し・行番号・強調・文字サイズ・フォント・文字コード" />
+                    <Popup PlacementTarget="{Binding ElementName=ViewMenuButton}" Placement="Bottom"
+                           StaysOpen="False" AllowsTransparency="True"
+                           IsOpen="{Binding IsChecked, ElementName=ViewMenuButton, Mode=TwoWay}">
+                        <Border Background="White" BorderBrush="#FFC6C9C2" BorderThickness="1" Padding="12,10"
+                                Margin="0,2,8,8">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.18" />
+                            </Border.Effect>
+                            <StackPanel Width="248">
+                                <CheckBox Content="折り返し" IsChecked="{Binding WordWrap}" Margin="0,0,0,6" />
+                                <CheckBox Content="行番号" IsChecked="{Binding ShowLineNumbers}" Margin="0,0,0,6" />
+                                <CheckBox Content="条件ペイン" IsChecked="{Binding FilterPaneVisible}" Margin="0,0,0,10" />
+
+                                <TextBlock Text="強調" Style="{StaticResource SectionHeader}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <RadioButton Content="なし" GroupName="HlPop" Margin="0,0,10,0"
+                                                 IsChecked="{Binding HighlightMode, Converter={StaticResource EnumBool}, ConverterParameter=None}" />
+                                    <RadioButton Content="一致箇所" GroupName="HlPop" Margin="0,0,10,0"
+                                                 IsChecked="{Binding HighlightMode, Converter={StaticResource EnumBool}, ConverterParameter=Match}" />
+                                    <RadioButton Content="行全体" GroupName="HlPop"
+                                                 IsChecked="{Binding HighlightMode, Converter={StaticResource EnumBool}, ConverterParameter=WholeLine}" />
+                                </StackPanel>
+
+                                <TextBlock Text="文字" Style="{StaticResource SectionHeader}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <Button Content="A-" Width="30" Command="{Binding DecreaseFontCommand}" />
+                                    <Button Content="A+" Width="30" Margin="4,0" Command="{Binding IncreaseFontCommand}" />
+                                    <Button Content="標準" Padding="8,0" Command="{Binding ResetFontCommand}" />
+                                </StackPanel>
+                                <ComboBox IsEditable="True" Margin="0,0,0,10"
+                                          Text="{Binding FontFamilyName, UpdateSourceTrigger=LostFocus}"
+                                          ToolTip="表示フォント">
+                                    <sys:String>Consolas, MS Gothic</sys:String>
+                                    <sys:String>Cascadia Mono, MS Gothic</sys:String>
+                                    <sys:String>MS Gothic</sys:String>
+                                    <sys:String>BIZ UDゴシック</sys:String>
+                                    <sys:String>Meiryo</sys:String>
+                                    <sys:String>Yu Gothic UI</sys:String>
+                                </ComboBox>
+
+                                <TextBlock Text="文字コード" Style="{StaticResource SectionHeader}" />
+                                <ComboBox ItemsSource="{Binding Encodings}"
+                                          SelectedItem="{Binding SelectedEncoding}"
+                                          DisplayMemberPath="DisplayName"
+                                          ToolTip="選択すると、その文字コードで読み直します" />
+
+                                <TextBlock Text="よく使うものは、バーを右クリックして出せます"
+                                           Foreground="#FF888888" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </Popup>
+                </StackPanel>
+
+                <!-- 左: 開いているログと、自分で選んだ項目 -->
+                <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Menu Background="Transparent" VerticalAlignment="Center">
+                        <MenuItem Header="{Binding DocumentName}" ToolTip="{Binding FileStatusText}" Padding="8,3">
+                            <MenuItem Header="開く..." InputGestureText="Ctrl+O" Command="{Binding OpenCommand}" />
+                            <MenuItem Header="クリップボードから読み込み" InputGestureText="Ctrl+Shift+V"
+                                      Command="{Binding PasteFromClipboardCommand}" />
+                            <MenuItem Header="最近使ったファイル" ItemsSource="{Binding RecentFiles}">
+                                <MenuItem.ItemContainerStyle>
+                                    <Style TargetType="MenuItem">
+                                        <Setter Property="Header" Value="{Binding DisplayPath}" />
+                                        <Setter Property="ToolTip" Value="{Binding Path}" />
+                                        <Setter Property="Command" Value="{Binding Command}" />
+                                        <Setter Property="CommandParameter" Value="{Binding Path}" />
+                                    </Style>
+                                </MenuItem.ItemContainerStyle>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Header="プロジェクトを開く..." InputGestureText="Ctrl+Shift+O"
+                                      Command="{Binding OpenProjectCommand}" />
+                            <MenuItem Header="プロジェクトを保存" InputGestureText="Ctrl+Shift+S"
+                                      Command="{Binding SaveProjectCommand}" />
+                            <Separator />
+                            <MenuItem Header="抽出結果を保存..." InputGestureText="Ctrl+S" Command="{Binding ExportCommand}" />
+                            <MenuItem Header="閉じる" Command="{Binding CloseFileCommand}" />
+                        </MenuItem>
+                    </Menu>
+
+                    <Button Content="再読込" Padding="8,2" Margin="6,0,0,0"
+                            Command="{Binding ReloadCommand}" ToolTip="再読み込み (F5)" />
+
+                    <!-- 処理中だけ出す。常設していた「中止」ボタンの置き換え -->
+                    <Button Content="中止" Padding="8,2" Margin="6,0,0,0"
+                            Command="{Binding CancelCommand}" ToolTip="実行中の処理を中止 (Esc)"
+                            Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+
+                    <!--
+                        ここから先は「表示」ポップアップの項目のうち、利用者が出すと決めたものだけ。
+                        右クリックで出し入れする（並び順はここで固定）。
+                    -->
+                    <StackPanel x:Name="ToolbarStrip" Orientation="Horizontal" Background="Transparent"
+                                MinWidth="24" Margin="10,0,0,0" VerticalAlignment="Center"
+                                ToolTip="右クリックすると、ここに出す項目を選べます">
+                        <StackPanel.ContextMenu>
+                            <ContextMenu ItemsSource="{Binding ToolbarMenu}">
+                                <ContextMenu.ItemContainerStyle>
+                                    <Style TargetType="MenuItem">
+                                        <Setter Property="Header" Value="{Binding Name}" />
+                                        <Setter Property="IsCheckable" Value="True" />
+                                        <Setter Property="IsChecked" Value="{Binding IsShown, Mode=TwoWay}" />
+                                        <Setter Property="StaysOpenOnClick" Value="True" />
+                                    </Style>
+                                </ContextMenu.ItemContainerStyle>
+                            </ContextMenu>
+                        </StackPanel.ContextMenu>
+
+                        <ToggleButton Content="折り返し" Padding="8,2" Margin="0,0,4,0" IsChecked="{Binding WordWrap}"
+                                      ToolTip="Ctrl+W"
+                                      Visibility="{Binding Toolbar[wrap], Converter={StaticResource BoolToVisibility}}" />
+                        <ToggleButton Content="行番号" Padding="8,2" Margin="0,0,4,0" IsChecked="{Binding ShowLineNumbers}"
+                                      ToolTip="Ctrl+L"
+                                      Visibility="{Binding Toolbar[linenumbers], Converter={StaticResource BoolToVisibility}}" />
+
+                        <Border BorderBrush="#FFC6C9C2" BorderThickness="1" CornerRadius="3" Margin="0,0,4,0"
+                                Visibility="{Binding Toolbar[highlight], Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal" ToolTip="強調の仕方">
+                                <RadioButton Content="なし" GroupName="HlBar" Padding="7,2" Style="{StaticResource BarSegment}"
+                                             IsChecked="{Binding HighlightMode, Converter={StaticResource EnumBool}, ConverterParameter=None}" />
+                                <RadioButton Content="一致箇所" GroupName="HlBar" Padding="7,2" Style="{StaticResource BarSegment}"
+                                             IsChecked="{Binding HighlightMode, Converter={StaticResource EnumBool}, ConverterParameter=Match}" />
+                                <RadioButton Content="行全体" GroupName="HlBar" Padding="7,2" Style="{StaticResource BarSegment}"
+                                             IsChecked="{Binding HighlightMode, Converter={StaticResource EnumBool}, ConverterParameter=WholeLine}" />
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,4,0"
+                                    Visibility="{Binding Toolbar[fontsize], Converter={StaticResource BoolToVisibility}}">
+                            <Button Content="A-" Width="28" Command="{Binding DecreaseFontCommand}" ToolTip="文字を小さく (Ctrl+-)" />
+                            <Button Content="A+" Width="28" Margin="4,0,0,0" Command="{Binding IncreaseFontCommand}" ToolTip="文字を大きく (Ctrl++)" />
+                        </StackPanel>
+
+                        <ComboBox IsEditable="True" Width="140" Margin="0,0,4,0" VerticalAlignment="Center"
+                                  Text="{Binding FontFamilyName, UpdateSourceTrigger=LostFocus}"
+                                  ToolTip="表示フォント"
+                                  Visibility="{Binding Toolbar[font], Converter={StaticResource BoolToVisibility}}">
+                            <sys:String>Consolas, MS Gothic</sys:String>
+                            <sys:String>Cascadia Mono, MS Gothic</sys:String>
+                            <sys:String>MS Gothic</sys:String>
+                            <sys:String>BIZ UDゴシック</sys:String>
+                            <sys:String>Meiryo</sys:String>
+                            <sys:String>Yu Gothic UI</sys:String>
+                        </ComboBox>
+
+                        <ComboBox Width="140" Margin="0,0,4,0" VerticalAlignment="Center"
+                                  ItemsSource="{Binding Encodings}"
+                                  SelectedItem="{Binding SelectedEncoding}"
+                                  DisplayMemberPath="DisplayName"
+                                  ToolTip="選択すると、その文字コードで読み直します"
+                                  Visibility="{Binding Toolbar[encoding], Converter={StaticResource BoolToVisibility}}" />
+
+                        <ToggleButton Content="条件ペイン" Padding="8,2" IsChecked="{Binding FilterPaneVisible}"
+                                      Visibility="{Binding Toolbar[filterpane], Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
 
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBarItem>
@@ -226,28 +374,28 @@
             </Grid.ColumnDefinitions>
 
             <!--
-                左ペインは「いつ反映されるか」で 3 つに分ける。
-                  抽出条件 … 適用ボタン（または自動適用）で反映
-                  表示     … 変更した瞬間に反映
-                  マーカー … 行に付ける印
+                左ペインは「条件」と「マーカー」の 2 つだけ。どちらもよく使うので、
+                スプリッタで縦を分け合う（以前は条件が縦を使い切り、マーカーが画面外に出ていた）。
+                表示設定は操作バーの「表示 ▾」へ移した。
             -->
             <Grid x:Name="FilterPane" Margin="8,8,4,8">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="*" MinHeight="240" />
+                    <!--
+                        比で分けると条件側が伸び切ってマーカーが潰れるので、マーカーには
+                        確かな高さを与え、余りを条件に回す。比率はスプリッタで変えられる。
+                    -->
+                    <RowDefinition Height="*" MinHeight="200" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="160" MinHeight="60" />
                 </Grid.RowDefinitions>
 
-                <!-- ===== 適用するまで反映されないもの ===== -->
-                <GroupBox Grid.Row="0" Header="抽出条件" Padding="6,2,6,6">
+                <GroupBox Grid.Row="0" Header="条件" Padding="6,2,6,6">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" MinHeight="54" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" MinHeight="54" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -266,29 +414,28 @@
                                           SelectedItem="{Binding SelectedPreset}"
                                           DisplayMemberPath="Name"
                                           ToolTip="選ぶと下の条件がまとめて入れ替わります。現在の条件がどのプリセットとも一致しないときは (カスタム) と表示されます。" />
-                                <!-- 選択なし = 現在の条件がどのプリセットとも一致していない状態 -->
                                 <TextBlock Text="(カスタム)" Margin="8,0,0,0" VerticalAlignment="Center"
                                            IsHitTestVisible="False" FontStyle="Italic" Foreground="#FF9E9E9E"
                                            Visibility="{Binding SelectedPreset, Converter={StaticResource NullToVisible}}" />
                             </Grid>
                         </DockPanel>
 
+                        <!-- 含む: 見出しで「絞り込むのか、色を付けるだけなのか」を選ぶ -->
                         <DockPanel Grid.Row="1" Margin="0,0,0,2">
-                            <TextBlock Text="含む (positive words)" Style="{StaticResource SectionHeader}" />
+                            <TextBlock Text="含む" Style="{StaticResource SectionHeader}" />
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                 <ToggleButton Content="テキスト" IsChecked="{Binding IncludeAsText}"
-                                              Padding="6,0" Margin="0,0,10,0" VerticalAlignment="Center" FontSize="11"
+                                              Padding="6,0" Margin="0,0,8,0" VerticalAlignment="Center" FontSize="11"
                                               ToolTip="まとめて貼り付け・編集したいときは、素のテキストとして扱えます" />
                                 <RadioButton Content="OR" GroupName="IncLogic" Margin="0,0,6,0" VerticalAlignment="Center"
                                              IsChecked="{Binding IncludeLogic, Converter={StaticResource EnumBool}, ConverterParameter=Or}"
-                                             ToolTip="いずれかに一致する行を表示" />
+                                             ToolTip="いずれかに一致する行が対象" />
                                 <RadioButton Content="AND" GroupName="IncLogic" VerticalAlignment="Center"
                                              IsChecked="{Binding IncludeLogic, Converter={StaticResource EnumBool}, ConverterParameter=And}"
-                                             ToolTip="すべてに一致する行を表示" />
+                                             ToolTip="すべてに一致する行が対象" />
                             </StackPanel>
                         </DockPanel>
 
-                        <!-- 行ごとに ON/OFF できるリストと、素のテキスト編集を切り替える（中身はどちらも同じ） -->
                         <Grid Grid.Row="2">
                             <Border BorderBrush="#FFABADB3" BorderThickness="1" Background="White"
                                     Visibility="{Binding IncludeAsText, Converter={StaticResource InverseBoolToVisibility}}">
@@ -298,7 +445,7 @@
                                                   ItemsSource="{Binding IncludePatterns}"
                                                   ItemTemplate="{StaticResource PatternLineTemplate}"
                                                   Margin="0,2"
-                                                  ToolTip="チェックを外した行は条件から外れます（文言は残ります）。色はログ本文の強調色と同じです。" />
+                                                  ToolTip="チェックを外した行は条件から外れます（文言は残ります）。色見本を右クリックすると色を変えられます。" />
                                 </ScrollViewer>
                             </Border>
 
@@ -308,106 +455,98 @@
                                      ToolTip="1 行に 1 パターン。空欄なら全行が対象。# で始まる行は OFF（コメント）扱いです。" />
                         </Grid>
 
-                        <!-- 「含む」を絞り込みに使うか、色だけに使うかの切り替え -->
-                        <CheckBox Grid.Row="3" Margin="0,4,0,0"
-                                  Content="行は絞り込まず、強調だけする"
-                                  IsChecked="{Binding IncludeHighlightOnly}"
-                                  ToolTip="ON にすると全行が表示されたまま、含む語には色だけが付きます。除外はそのまま効きます。" />
-
-                        <DockPanel Grid.Row="4" Margin="0,10,0,2">
-                            <TextBlock Text="除外 (negative words)" Style="{StaticResource SectionHeader}" />
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <RadioButton Content="OR" GroupName="ExcLogic" Margin="0,0,6,0" VerticalAlignment="Center"
-                                             IsChecked="{Binding ExcludeLogic, Converter={StaticResource EnumBool}, ConverterParameter=Or}"
-                                             ToolTip="いずれかに一致する行を隠す" />
-                                <RadioButton Content="AND" GroupName="ExcLogic" VerticalAlignment="Center"
-                                             IsChecked="{Binding ExcludeLogic, Converter={StaticResource EnumBool}, ConverterParameter=And}"
-                                             ToolTip="すべてに一致する行だけを隠す" />
-                            </StackPanel>
-                        </DockPanel>
-
-                        <TextBox Grid.Row="5" Style="{StaticResource PatternBox}"
-                                 Text="{Binding ExcludeText, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="ここに一致した行は、含む条件を満たしていても表示しません。" />
-
-                        <StackPanel Grid.Row="6" Margin="0,10,0,0"
-                                    ToolTip="含む・除外の書き方を決めます。右上の検索ボックスにも同じ設定が使われます。">
-                            <TextBlock Text="パターンの解釈" Style="{StaticResource SectionHeader}" />
-                            <StackPanel Orientation="Horizontal">
-                                <RadioButton Content="通常" GroupName="Mode" Margin="0,0,10,0"
-                                             IsChecked="{Binding Mode, Converter={StaticResource EnumBool}, ConverterParameter=Plain}" />
-                                <RadioButton Content="ワイルドカード" GroupName="Mode" Margin="0,0,10,0"
-                                             IsChecked="{Binding Mode, Converter={StaticResource EnumBool}, ConverterParameter=Wildcard}" />
-                                <RadioButton Content="正規表現" GroupName="Mode"
-                                             IsChecked="{Binding Mode, Converter={StaticResource EnumBool}, ConverterParameter=Regex}" />
-                            </StackPanel>
-                            <TextBlock Text="{Binding ModeHint}" TextWrapping="Wrap" Foreground="#FF777777"
-                                       FontSize="11" Margin="0,4,0,0" />
-                            <CheckBox Content="大文字小文字を区別" IsChecked="{Binding CaseSensitive}" Margin="0,6,0,0" />
+                        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,5,0,0">
+                            <TextBlock Text="含む語で" VerticalAlignment="Center" Foreground="#FF666666" Margin="0,0,6,0" />
+                            <RadioButton Content="絞り込む" GroupName="IncUse" VerticalAlignment="Center" Margin="0,0,8,0"
+                                         IsChecked="{Binding IncludeHighlightOnly, Converter={StaticResource InverseBool}}"
+                                         ToolTip="一致した行だけを残します" />
+                            <RadioButton Content="強調だけ" GroupName="IncUse" VerticalAlignment="Center"
+                                         IsChecked="{Binding IncludeHighlightOnly}"
+                                         ToolTip="全行を表示したまま、含む語に色だけを付けます（除外はそのまま効きます）" />
                         </StackPanel>
 
-                        <!-- 上の条件を確定させる操作。条件のすぐ下に置く -->
-                        <WrapPanel Grid.Row="7" Margin="0,10,0,0">
-                            <Button Content="適用" Command="{Binding ApplyFilterCommand}"
-                                    Padding="14,4" Margin="0,0,8,4" ToolTip="Ctrl+Enter" />
-                            <Button Content="クリア" Command="{Binding ClearFilterCommand}"
-                                    Padding="14,4" Margin="0,0,10,4"
-                                    ToolTip="含む・除外・検索語を空にして全行表示に戻します" />
-                            <CheckBox Content="自動適用" IsChecked="{Binding AutoApply}" VerticalAlignment="Center"
-                                      Margin="0,0,0,4"
-                                      ToolTip="ON のあいだは、入力を止めた少し後に自動で適用されます（適用ボタンは不要）" />
+                        <!-- 除外は使うまで 1 行。中身が入ると自動で開く -->
+                        <Expander Grid.Row="4" Margin="0,8,0,0" IsExpanded="{Binding ExcludeExpanded, Mode=TwoWay}">
+                            <Expander.Header>
+                                <DockPanel Width="200">
+                                    <TextBlock Text="除外" Style="{StaticResource SectionHeader}" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <RadioButton Content="OR" GroupName="ExcLogic" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                     IsChecked="{Binding ExcludeLogic, Converter={StaticResource EnumBool}, ConverterParameter=Or}"
+                                                     ToolTip="いずれかに一致する行を隠す" />
+                                        <RadioButton Content="AND" GroupName="ExcLogic" VerticalAlignment="Center"
+                                                     IsChecked="{Binding ExcludeLogic, Converter={StaticResource EnumBool}, ConverterParameter=And}"
+                                                     ToolTip="すべてに一致する行だけを隠す" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Expander.Header>
+                            <TextBox Style="{StaticResource PatternBox}" Height="96" Margin="0,4,0,0"
+                                     Text="{Binding ExcludeText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="ここに一致した行は、含む条件を満たしていても表示しません。" />
+                        </Expander>
+
+                        <!-- 解釈・大文字小文字・前後行を 1 行に畳む -->
+                        <WrapPanel Grid.Row="5" Margin="0,10,0,0">
+                            <RadioButton Content="通常" GroupName="Mode" Margin="0,0,8,4" VerticalAlignment="Center"
+                                         IsChecked="{Binding Mode, Converter={StaticResource EnumBool}, ConverterParameter=Plain}"
+                                         ToolTip="単純な部分一致（1 行に 1 パターン、# 始まりはコメント）" />
+                            <RadioButton Content="ワイルド" GroupName="Mode" Margin="0,0,8,4" VerticalAlignment="Center"
+                                         IsChecked="{Binding Mode, Converter={StaticResource EnumBool}, ConverterParameter=Wildcard}"
+                                         ToolTip="* は 0 文字以上、? は任意の 1 文字。部分一致で判定します" />
+                            <RadioButton Content="正規表現" GroupName="Mode" Margin="0,0,10,4" VerticalAlignment="Center"
+                                         IsChecked="{Binding Mode, Converter={StaticResource EnumBool}, ConverterParameter=Regex}"
+                                         ToolTip=".NET 正規表現。部分一致で判定します（^ $ でアンカー可）" />
+                            <ToggleButton Content="Aa" Padding="7,1" Margin="0,0,10,4" VerticalAlignment="Center"
+                                          IsChecked="{Binding CaseSensitive}" ToolTip="大文字小文字を区別する" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" VerticalAlignment="Center"
+                                        ToolTip="ヒット行の前後を文脈として一緒に表示します。前後行は除外語の影響を受けません。">
+                                <TextBlock Text="前後" VerticalAlignment="Center" />
+                                <TextBox Width="40" Margin="4,0" TextAlignment="Right"
+                                         Text="{Binding ContextLinesText, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Text="行" VerticalAlignment="Center" />
+                            </StackPanel>
                         </WrapPanel>
 
-                        <TextBlock Grid.Row="8" Margin="0,8,0,0"
-                                   Text="{Binding FilterError}"
-                                   Visibility="{Binding FilterError, Converter={StaticResource NullToVisibility}}"
-                                   Foreground="#FFC62828" TextWrapping="Wrap" FontSize="11" />
+                        <StackPanel Grid.Row="6">
+                            <WrapPanel Margin="0,8,0,0">
+                                <!-- 自動適用が ON のあいだは押す必要がないので出さない -->
+                                <Button Content="適用" Command="{Binding ApplyFilterCommand}"
+                                        Padding="14,3" Margin="0,0,8,4" ToolTip="Ctrl+Enter"
+                                        Visibility="{Binding AutoApply, Converter={StaticResource InverseBoolToVisibility}}" />
+                                <Button Content="クリア" Command="{Binding ClearFilterCommand}"
+                                        Padding="14,3" Margin="0,0,10,4"
+                                        ToolTip="含む・除外・検索語を空にして全行表示に戻します" />
+                                <CheckBox Content="自動適用" IsChecked="{Binding AutoApply}" VerticalAlignment="Center"
+                                          Margin="0,0,0,4"
+                                          ToolTip="ON のあいだは、入力を止めた少し後に自動で適用されます" />
+                            </WrapPanel>
+
+                            <TextBlock Margin="0,6,0,0"
+                                       Text="{Binding FilterError}"
+                                       Visibility="{Binding FilterError, Converter={StaticResource NullToVisibility}}"
+                                       Foreground="#FFC62828" TextWrapping="Wrap" FontSize="11" />
+                        </StackPanel>
                     </Grid>
                 </GroupBox>
 
-                <!-- ===== 変更した瞬間に反映されるもの ===== -->
-                <GroupBox Grid.Row="1" Header="表示" Margin="0,8,0,0" Padding="6,2,6,6">
-                    <StackPanel>
-                        <TextBlock Text="ここは「適用」を押さなくてもすぐ反映されます"
-                                   Foreground="#FF777777" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,6" />
+                <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                              Background="Transparent" />
 
-                        <StackPanel Orientation="Horizontal"
-                                    ToolTip="ヒット行の前後を文脈として一緒に表示します。前後行は除外語の影響を受けません。">
-                            <TextBlock Text="ヒット行の前後" VerticalAlignment="Center" />
-                            <TextBox Width="46" Margin="6,0" TextAlignment="Right"
-                                     Text="{Binding ContextLinesText, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Text="行も表示" VerticalAlignment="Center" />
-                        </StackPanel>
-
-                        <WrapPanel Margin="0,8,0,0">
-                            <CheckBox Content="折り返し" IsChecked="{Binding WordWrap}" Margin="0,0,12,4" />
-                            <CheckBox Content="行番号" IsChecked="{Binding ShowLineNumbers}" Margin="0,0,12,4" />
-                            <CheckBox Content="一致箇所を強調" IsChecked="{Binding HighlightMatches}" Margin="0,0,12,4" />
-                            <CheckBox Content="行全体に色を付ける" IsChecked="{Binding HighlightWholeLine}" Margin="0,0,0,4"
-                                      IsEnabled="{Binding HighlightMatches}"
-                                      ToolTip="一致した箇所だけでなく、行全体の背景を「含む」の色で塗ります。検索語は従来どおり一致箇所だけを強調します。" />
-                        </WrapPanel>
-                    </StackPanel>
-                </GroupBox>
-
-                <Expander Grid.Row="2" Margin="0,8,0,0" IsExpanded="True"
-                          Header="{Binding MarkerHeader}">
-                    <DockPanel Margin="0,4,0,0">
-                        <Button DockPanel.Dock="Bottom" Content="マーカーをすべて解除" Margin="0,4,0,0"
+                <GroupBox Grid.Row="2" Header="{Binding MarkerHeader}" Padding="6,2,6,6">
+                    <DockPanel Margin="0,2,0,0">
+                        <Button DockPanel.Dock="Bottom" Content="すべて解除" Margin="0,4,0,0"
                                 Padding="6,2" HorizontalAlignment="Left"
                                 Command="{Binding ClearMarkersCommand}" />
                         <ListBox x:Name="MarkerList"
-                                 MaxHeight="200"
                                  ItemsSource="{Binding Markers}"
                                  SelectedItem="{Binding SelectedMarker}"
                                  HorizontalContentAlignment="Stretch"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  FontFamily="Consolas, MS Gothic"
-                                 ToolTip="クリックするとその行へ移動します（抽出結果に無い場合は最も近い行へ）">
+                                 ToolTip="クリックするとその行へ移動します（抽出結果に無い場合は最も近い行へ）。右クリックで色を変えられます。">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal">
-                                        <!-- ログ本文の左端に出る帯と同じ色 -->
                                         <Border Width="10" Height="10" CornerRadius="2" Margin="0,0,6,0"
                                                 VerticalAlignment="Center"
                                                 Background="{Binding Color.Accent}" />
@@ -437,98 +576,75 @@
                             </ListBox.ContextMenu>
                         </ListBox>
                     </DockPanel>
-                </Expander>
+                </GroupBox>
             </Grid>
 
             <GridSplitter x:Name="PaneSplitter" Grid.Column="1" Width="5"
                           HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                           Background="#FFE3E3E3" />
 
-            <!-- ログ表示 -->
-            <DockPanel Grid.Column="2">
-                <Border DockPanel.Dock="Top" BorderBrush="#FFDDDDDD" BorderThickness="0,0,0,1" Padding="6,4">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="検索" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBox x:Name="SearchBox" Width="240" VerticalAlignment="Center"
-                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 KeyDown="SearchBox_KeyDown"
-                                 ToolTip="表示中の行から検索します（検索方法は抽出条件の設定に従います）" />
-                        <Button Content="◀" Width="28" Margin="4,0,0,0" Command="{Binding FindPreviousCommand}"
-                                ToolTip="前を検索 (Shift+F3)" />
-                        <Button Content="▶" Width="28" Margin="4,0,0,0" Command="{Binding FindNextCommand}"
-                                ToolTip="次を検索 (F3)" />
-                        <Border Width="1" Background="#FFDDDDDD" Margin="10,2" />
-                        <TextBlock Text="行番号" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBox x:Name="GoToBox" Width="90" VerticalAlignment="Center"
-                                 Text="{Binding GoToLineText, UpdateSourceTrigger=PropertyChanged}"
-                                 KeyDown="GoToBox_KeyDown" />
-                        <Button Content="移動" Margin="4,0,0,0" Padding="8,1" Command="{Binding GoToLineCommand}" />
-                    </StackPanel>
-                </Border>
-
-                <ListBox x:Name="LineList"
-                         ItemsSource="{Binding Lines}"
-                         SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"
-                         Tag="{Binding View}"
-                         ItemTemplate="{StaticResource LineTemplate}"
-                         ItemContainerStyle="{StaticResource LineItemStyle}"
-                         FontFamily="{Binding FontFamilyName}"
-                         FontSize="{Binding FontSize}"
-                         SelectionMode="Extended"
-                         BorderThickness="0"
-                         VirtualizingPanel.IsVirtualizing="True"
-                         VirtualizingPanel.VirtualizationMode="Recycling"
-                         VirtualizingPanel.ScrollUnit="Item"
-                         VirtualizingPanel.CacheLengthUnit="Item"
-                         VirtualizingPanel.CacheLength="16,16"
-                         ScrollViewer.IsDeferredScrollingEnabled="False"
-                         ScrollViewer.VerticalScrollBarVisibility="Visible"
-                         ScrollViewer.HorizontalScrollBarVisibility="{Binding WordWrap, Converter={StaticResource WrapToScroll}}">
-                    <ListBox.ContextMenu>
-                        <!-- ContextMenu はビジュアルツリー外なので、RoutedCommand には対象を明示する -->
-                        <ContextMenu>
-                            <ContextMenu.Resources>
-                                <Style TargetType="MenuItem">
-                                    <Setter Property="CommandTarget"
-                                            Value="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                </Style>
-                            </ContextMenu.Resources>
-                            <MenuItem Header="コピー" InputGestureText="Ctrl+C" Command="ApplicationCommands.Copy" />
-                            <MenuItem Header="行番号付きでコピー"
-                                      Command="{x:Static local:MainWindow.CopyWithLineNumbersCommand}" />
-                            <Separator />
-                            <MenuItem Header="マーカーの ON/OFF" InputGestureText="Ctrl+M"
-                                      Command="{x:Static local:MainWindow.ToggleMarkerCommand}" />
-                            <MenuItem Header="色を指定してマーカー">
-                                <MenuItem Header="橙" InputGestureText="Ctrl+1"
-                                          Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="0" />
-                                <MenuItem Header="赤" InputGestureText="Ctrl+2"
-                                          Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="1" />
-                                <MenuItem Header="黄" InputGestureText="Ctrl+3"
-                                          Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="2" />
-                                <MenuItem Header="緑" InputGestureText="Ctrl+4"
-                                          Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="3" />
-                                <MenuItem Header="青" InputGestureText="Ctrl+5"
-                                          Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="4" />
-                                <MenuItem Header="紫" InputGestureText="Ctrl+6"
-                                          Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="5" />
-                            </MenuItem>
-                            <Separator />
-                            <MenuItem Header="この行の前後を展開">
-                                <MenuItem Header="前後 5 行"
-                                          Command="{x:Static local:MainWindow.ExpandAroundCommand}" CommandParameter="5" />
-                                <MenuItem Header="前後 20 行"
-                                          Command="{x:Static local:MainWindow.ExpandAroundCommand}" CommandParameter="20" />
-                                <MenuItem Header="前後 100 行"
-                                          Command="{x:Static local:MainWindow.ExpandAroundCommand}" CommandParameter="100" />
-                            </MenuItem>
-                            <MenuItem Header="展開をすべて解除" Command="{Binding ClearExpansionsCommand}" />
-                            <Separator />
-                            <MenuItem Header="抽出結果を保存..." Command="{Binding ExportCommand}" />
-                        </ContextMenu>
-                    </ListBox.ContextMenu>
-                </ListBox>
-            </DockPanel>
+            <ListBox x:Name="LineList" Grid.Column="2"
+                     ItemsSource="{Binding Lines}"
+                     SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"
+                     Tag="{Binding View}"
+                     ItemTemplate="{StaticResource LineTemplate}"
+                     ItemContainerStyle="{StaticResource LineItemStyle}"
+                     FontFamily="{Binding FontFamilyName}"
+                     FontSize="{Binding FontSize}"
+                     SelectionMode="Extended"
+                     BorderThickness="0"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     VirtualizingPanel.ScrollUnit="Item"
+                     VirtualizingPanel.CacheLengthUnit="Item"
+                     VirtualizingPanel.CacheLength="16,16"
+                     ScrollViewer.IsDeferredScrollingEnabled="False"
+                     ScrollViewer.VerticalScrollBarVisibility="Visible"
+                     ScrollViewer.HorizontalScrollBarVisibility="{Binding WordWrap, Converter={StaticResource WrapToScroll}}">
+                <ListBox.ContextMenu>
+                    <!-- ContextMenu はビジュアルツリー外なので、RoutedCommand には対象を明示する -->
+                    <ContextMenu>
+                        <ContextMenu.Resources>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="CommandTarget"
+                                        Value="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            </Style>
+                        </ContextMenu.Resources>
+                        <MenuItem Header="コピー" InputGestureText="Ctrl+C" Command="ApplicationCommands.Copy" />
+                        <MenuItem Header="行番号付きでコピー"
+                                  Command="{x:Static local:MainWindow.CopyWithLineNumbersCommand}" />
+                        <Separator />
+                        <MenuItem Header="マーカーの ON/OFF" InputGestureText="Ctrl+M"
+                                  Command="{x:Static local:MainWindow.ToggleMarkerCommand}" />
+                        <MenuItem Header="色を指定してマーカー">
+                            <MenuItem Header="橙" InputGestureText="Ctrl+1"
+                                      Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="0" />
+                            <MenuItem Header="赤" InputGestureText="Ctrl+2"
+                                      Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="1" />
+                            <MenuItem Header="黄" InputGestureText="Ctrl+3"
+                                      Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="2" />
+                            <MenuItem Header="緑" InputGestureText="Ctrl+4"
+                                      Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="3" />
+                            <MenuItem Header="青" InputGestureText="Ctrl+5"
+                                      Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="4" />
+                            <MenuItem Header="紫" InputGestureText="Ctrl+6"
+                                      Command="{x:Static local:MainWindow.ToggleMarkerColorCommand}" CommandParameter="5" />
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Header="この行の前後を展開">
+                            <MenuItem Header="前後 5 行"
+                                      Command="{x:Static local:MainWindow.ExpandAroundCommand}" CommandParameter="5" />
+                            <MenuItem Header="前後 20 行"
+                                      Command="{x:Static local:MainWindow.ExpandAroundCommand}" CommandParameter="20" />
+                            <MenuItem Header="前後 100 行"
+                                      Command="{x:Static local:MainWindow.ExpandAroundCommand}" CommandParameter="100" />
+                        </MenuItem>
+                        <MenuItem Header="展開をすべて解除" Command="{Binding ClearExpansionsCommand}" />
+                        <Separator />
+                        <MenuItem Header="抽出結果を保存..." Command="{Binding ExportCommand}" />
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+            </ListBox>
         </Grid>
     </DockPanel>
 </Window>

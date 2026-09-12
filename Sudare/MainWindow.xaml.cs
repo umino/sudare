@@ -180,20 +180,21 @@ public partial class MainWindow : Window
 
     private void FocusSearchExecuted(object sender, ExecutedRoutedEventArgs e) => FocusAndSelect(SearchBox);
 
-    private void FocusGoToExecuted(object sender, ExecutedRoutedEventArgs e) => FocusAndSelect(GoToBox);
+    /// <summary>
+    /// 行ジャンプ専用の入力欄は置かず、検索欄に <c>:</c> を入れて続きを打てる状態にする。
+    /// </summary>
+    private void FocusGoToExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (!MainViewModel.IsLineJump(_viewModel.SearchText)) _viewModel.SearchText = ":";
+        SearchBox.Focus();
+        SearchBox.CaretIndex = SearchBox.Text.Length;
+    }
 
     private void SearchBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter) return;
         if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) _viewModel.FindPreviousCommand.Execute(null);
         else _viewModel.FindNextCommand.Execute(null);
-        e.Handled = true;
-    }
-
-    private void GoToBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter) return;
-        _viewModel.GoToLineCommand.Execute(null);
         e.Handled = true;
     }
 

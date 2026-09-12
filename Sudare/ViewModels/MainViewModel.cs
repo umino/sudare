@@ -808,8 +808,19 @@ public sealed class MainViewModel : ObservableObject
 
     /// <summary>「上書き」ボタンの説明。どのプリセットに書き戻すのかを名前で見せる。</summary>
     public string OverwriteHint => _activePreset is null
-        ? "上書きするプリセットがありません。先にプリセットを選ぶか、「名前を付けて保存」してください。"
+        ? "上書きするプリセットがありません。「新規...」で名前を付けて保存してください。"
         : $"プリセット「{_activePreset.Name}」に現在の条件を上書きします";
+
+    /// <summary>
+    /// プリセット欄に重ねて出す文字。
+    /// </summary>
+    /// <remarks>
+    /// 条件を触ると選択は外れるが、名前まで消すと「何に上書きするのか」が分からなくなる。
+    /// 編集中のプリセット名は出したまま、ずれていることを（変更あり）で示す。
+    /// </remarks>
+    public string PresetStateText => _activePreset is null
+        ? "(カスタム)"
+        : $"{_activePreset.Name}（変更あり）";
 
     public FilterPreset? SelectedPreset
     {
@@ -894,6 +905,7 @@ public sealed class MainViewModel : ObservableObject
         if (ReferenceEquals(_activePreset, preset)) return;
         _activePreset = preset;
         OnPropertyChanged(nameof(OverwriteHint));
+        OnPropertyChanged(nameof(PresetStateText));
         OverwritePresetCommand.RaiseCanExecuteChanged();
     }
 

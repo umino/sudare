@@ -438,10 +438,25 @@
                         <DockPanel Grid.Row="1" Margin="0,0,0,2">
                             <TextBlock Text="含む" Style="{StaticResource SectionHeader}" />
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <!-- 含む語は常に「いずれかに一致」。AND は使われないので置かない -->
-                                <ToggleButton Content="テキスト" IsChecked="{Binding IncludeAsText}"
-                                              Padding="6,0" VerticalAlignment="Center" FontSize="11"
-                                              ToolTip="まとめて貼り付け・編集したいときは、素のテキストとして扱えます" />
+                                <!--
+                                    ボタン 1 つだと「押すと何かが起きる」ようにしか見えないので、
+                                    2 つ並べて「いまどちらで編集しているか」と「もう一方へ移れること」を同時に見せる。
+                                -->
+                                <TextBlock Text="編集" VerticalAlignment="Center" Foreground="#FF888888"
+                                           FontSize="11" Margin="0,0,5,0" />
+                                <Border BorderBrush="#FFC6C9C2" BorderThickness="1" CornerRadius="3"
+                                        VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton Content="リスト" GroupName="IncludeEdit" Padding="7,1"
+                                                     Style="{StaticResource BarSegment}"
+                                                     IsChecked="{Binding IncludeAsText, Converter={StaticResource InverseBool}}"
+                                                     ToolTip="1 行ずつチェックで ON/OFF でき、色も選べます" />
+                                        <RadioButton Content="テキスト" GroupName="IncludeEdit" Padding="7,1"
+                                                     Style="{StaticResource BarSegment}"
+                                                     IsChecked="{Binding IncludeAsText}"
+                                                     ToolTip="まとめて貼り付け・編集したいときは、素のテキストとして扱えます" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </DockPanel>
 
@@ -477,17 +492,8 @@
                         <!-- 除外は使うまで 1 行。中身が入ると自動で開く -->
                         <Expander Grid.Row="4" Margin="0,8,0,0" IsExpanded="{Binding ExcludeExpanded, Mode=TwoWay}">
                             <Expander.Header>
-                                <DockPanel Width="200">
-                                    <TextBlock Text="除外" Style="{StaticResource SectionHeader}" />
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <RadioButton Content="OR" GroupName="ExcLogic" Margin="0,0,6,0" VerticalAlignment="Center"
-                                                     IsChecked="{Binding ExcludeLogic, Converter={StaticResource EnumBool}, ConverterParameter=Or}"
-                                                     ToolTip="いずれかに一致する行を隠す" />
-                                        <RadioButton Content="AND" GroupName="ExcLogic" VerticalAlignment="Center"
-                                                     IsChecked="{Binding ExcludeLogic, Converter={StaticResource EnumBool}, ConverterParameter=And}"
-                                                     ToolTip="すべてに一致する行だけを隠す" />
-                                    </StackPanel>
-                                </DockPanel>
+                                <TextBlock Text="除外" Style="{StaticResource SectionHeader}"
+                                           ToolTip="ここに一致した行は、含む条件を満たしていても表示しません" />
                             </Expander.Header>
                             <TextBox Style="{StaticResource PatternBox}" Height="96" Margin="0,4,0,0"
                                      Text="{Binding ExcludeText, UpdateSourceTrigger=PropertyChanged}"

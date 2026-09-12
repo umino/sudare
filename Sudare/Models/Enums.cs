@@ -31,13 +31,3 @@ public enum HighlightMode
     /// <summary>一致した行の全体を塗る。</summary>
     WholeLine,
 }
-
-/// <summary>複数パターンの結合方法。</summary>
-public enum LogicMode
-{
-    /// <summary>いずれかに一致。</summary>
-    Or,
-
-    /// <summary>すべてに一致。</summary>
-    And,
-}

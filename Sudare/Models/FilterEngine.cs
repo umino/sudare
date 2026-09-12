@@ -6,52 +6,39 @@ public sealed record FilterRequest(
     string ExcludeText,
     MatchMode Mode,
     bool CaseSensitive,
-    LogicMode IncludeLogic,
     LogicMode ExcludeLogic);
 
 /// <summary>コンパイル済みフィルタ。生成後は不変でスレッドセーフ。</summary>
 public sealed class CompiledFilter
 {
     public static CompiledFilter Empty { get; } =
-        new(Array.Empty<PatternMatcher>(), Array.Empty<PatternMatcher>(), LogicMode.Or, LogicMode.Or);
+        new(Array.Empty<PatternMatcher>(), Array.Empty<PatternMatcher>(), LogicMode.Or);
 
-    private CompiledFilter(PatternMatcher[] include, PatternMatcher[] exclude,
-                           LogicMode includeLogic, LogicMode excludeLogic)
+    private CompiledFilter(PatternMatcher[] include, PatternMatcher[] exclude, LogicMode excludeLogic)
     {
         Include = include;
         Exclude = exclude;
-        IncludeLogic = includeLogic;
         ExcludeLogic = excludeLogic;
     }
 
     public PatternMatcher[] Include { get; }
     public PatternMatcher[] Exclude { get; }
-    public LogicMode IncludeLogic { get; }
     public LogicMode ExcludeLogic { get; }
 
     public bool IsEmpty => Include.Length == 0 && Exclude.Length == 0;
 
     public bool IsMatch(ReadOnlySpan<char> line)
     {
+        // 含む語はいずれかに一致すればよい（AND は使われないので持たない）
         var include = Include;
         if (include.Length > 0)
         {
-            if (IncludeLogic == LogicMode.And)
+            bool any = false;
+            for (int i = 0; i < include.Length; i++)
             {
-                for (int i = 0; i < include.Length; i++)
-                {
-                    if (!include[i].IsMatch(line)) return false;
-                }
+                if (include[i].IsMatch(line)) { any = true; break; }
             }
-            else
-            {
-                bool any = false;
-                for (int i = 0; i < include.Length; i++)
-                {
-                    if (include[i].IsMatch(line)) { any = true; break; }
-                }
-                if (!any) return false;
-            }
+            if (!any) return false;
         }
 
         var exclude = Exclude;
@@ -87,7 +74,7 @@ public sealed class CompiledFilter
         var include = CompilePatterns(request.IncludeText, request.Mode, request.CaseSensitive);
         var exclude = CompilePatterns(request.ExcludeText, request.Mode, request.CaseSensitive);
         if (include.Length == 0 && exclude.Length == 0) return Empty;
-        return new CompiledFilter(include, exclude, request.IncludeLogic, request.ExcludeLogic);
+        return new CompiledFilter(include, exclude, request.ExcludeLogic);
     }
 
     public static PatternMatcher[] CompilePatterns(string text, MatchMode mode, bool caseSensitive)

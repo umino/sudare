@@ -17,7 +17,6 @@ public sealed class FilterPreset
     public string Exclude { get; set; } = string.Empty;
     public MatchMode Mode { get; set; } = MatchMode.Plain;
     public bool CaseSensitive { get; set; }
-    public LogicMode IncludeLogic { get; set; } = LogicMode.Or;
     public LogicMode ExcludeLogic { get; set; } = LogicMode.Or;
 
     /// <summary>「含む」を絞り込みには使わず、強調表示だけに使うか。</summary>
@@ -46,7 +45,6 @@ public sealed class AppSettings
     public string ExcludeText { get; set; } = string.Empty;
     public MatchMode Mode { get; set; } = MatchMode.Plain;
     public bool CaseSensitive { get; set; }
-    public LogicMode IncludeLogic { get; set; } = LogicMode.Or;
     public LogicMode ExcludeLogic { get; set; } = LogicMode.Or;
     public bool AutoApply { get; set; } = true;
     public int ContextLines { get; set; }

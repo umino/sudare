@@ -22,3 +22,7 @@ desktop.ini
 
 # Claude Code の個人設定（共有する設定は .claude/settings.json に置く）
 .claude/settings.local.json
+
+# icongen が焼き直しのたびに書き出す確認用プレビュー。
+# README の手順どおり出力先に Sudare\ を渡すと、.ico と並べて 7 枚置かれる。
+preview_*.png

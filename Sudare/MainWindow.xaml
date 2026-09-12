@@ -438,15 +438,10 @@
                         <DockPanel Grid.Row="1" Margin="0,0,0,2">
                             <TextBlock Text="含む" Style="{StaticResource SectionHeader}" />
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <!-- 含む語は常に「いずれかに一致」。AND は使われないので置かない -->
                                 <ToggleButton Content="テキスト" IsChecked="{Binding IncludeAsText}"
-                                              Padding="6,0" Margin="0,0,8,0" VerticalAlignment="Center" FontSize="11"
+                                              Padding="6,0" VerticalAlignment="Center" FontSize="11"
                                               ToolTip="まとめて貼り付け・編集したいときは、素のテキストとして扱えます" />
-                                <RadioButton Content="OR" GroupName="IncLogic" Margin="0,0,6,0" VerticalAlignment="Center"
-                                             IsChecked="{Binding IncludeLogic, Converter={StaticResource EnumBool}, ConverterParameter=Or}"
-                                             ToolTip="いずれかに一致する行が対象" />
-                                <RadioButton Content="AND" GroupName="IncLogic" VerticalAlignment="Center"
-                                             IsChecked="{Binding IncludeLogic, Converter={StaticResource EnumBool}, ConverterParameter=And}"
-                                             ToolTip="すべてに一致する行が対象" />
                             </StackPanel>
                         </DockPanel>
 

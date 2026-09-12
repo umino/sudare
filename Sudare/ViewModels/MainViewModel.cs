@@ -262,13 +262,6 @@ public sealed class MainViewModel : ObservableObject
         set { if (SetProperty(ref _caseSensitive, value)) OnFilterConditionChanged(); }
     }
 
-    private LogicMode _includeLogic = LogicMode.Or;
-    public LogicMode IncludeLogic
-    {
-        get => _includeLogic;
-        set { if (SetProperty(ref _includeLogic, value)) OnFilterConditionChanged(); }
-    }
-
     private LogicMode _excludeLogic = LogicMode.Or;
     public LogicMode ExcludeLogic
     {
@@ -871,7 +864,6 @@ public sealed class MainViewModel : ObservableObject
         && string.Equals(preset.Exclude, ExcludeText, StringComparison.Ordinal)
         && preset.Mode == Mode
         && preset.CaseSensitive == CaseSensitive
-        && preset.IncludeLogic == IncludeLogic
         && preset.ExcludeLogic == ExcludeLogic
         && preset.IncludeHighlightOnly == IncludeHighlightOnly
         && SameIncludeColors(preset.IncludeColors, CurrentIncludeColors());
@@ -889,7 +881,6 @@ public sealed class MainViewModel : ObservableObject
             ExcludeText = preset.Exclude;
             Mode = preset.Mode;
             CaseSensitive = preset.CaseSensitive;
-            IncludeLogic = preset.IncludeLogic;
             ExcludeLogic = preset.ExcludeLogic;
             IncludeHighlightOnly = preset.IncludeHighlightOnly;
         }
@@ -928,7 +919,6 @@ public sealed class MainViewModel : ObservableObject
         preset.Exclude = ExcludeText;
         preset.Mode = Mode;
         preset.CaseSensitive = CaseSensitive;
-        preset.IncludeLogic = IncludeLogic;
         preset.ExcludeLogic = ExcludeLogic;
         preset.IncludeHighlightOnly = IncludeHighlightOnly;
     }
@@ -1235,7 +1225,6 @@ public sealed class MainViewModel : ObservableObject
             ExcludeText = project.ExcludeText;
             Mode = project.Mode;
             CaseSensitive = project.CaseSensitive;
-            IncludeLogic = project.IncludeLogic;
             ExcludeLogic = project.ExcludeLogic;
             IncludeHighlightOnly = project.IncludeHighlightOnly;
             ContextLines = Math.Clamp(project.ContextLines, 0, MaxContextLines);
@@ -1381,7 +1370,6 @@ public sealed class MainViewModel : ObservableObject
             ExcludeText = ExcludeText,
             Mode = Mode,
             CaseSensitive = CaseSensitive,
-            IncludeLogic = IncludeLogic,
             ExcludeLogic = ExcludeLogic,
             IncludeHighlightOnly = IncludeHighlightOnly,
             ContextLines = ContextLines,
@@ -1483,7 +1471,7 @@ public sealed class MainViewModel : ObservableObject
 
             filter = CompiledFilter.Compile(new FilterRequest(
                 IncludeHighlightOnly ? string.Empty : IncludeText,
-                ExcludeText, Mode, CaseSensitive, IncludeLogic, ExcludeLogic));
+                ExcludeText, Mode, CaseSensitive, ExcludeLogic));
             FilterError = null;
         }
         catch (FilterPatternException ex)
@@ -2105,7 +2093,6 @@ public sealed class MainViewModel : ObservableObject
             ExcludeText = _settings.ExcludeText;
             Mode = _settings.Mode;
             CaseSensitive = _settings.CaseSensitive;
-            IncludeLogic = _settings.IncludeLogic;
             ExcludeLogic = _settings.ExcludeLogic;
             IncludeHighlightOnly = _settings.IncludeHighlightOnly;
             AutoApply = _settings.AutoApply;
@@ -2137,7 +2124,6 @@ public sealed class MainViewModel : ObservableObject
         _settings.ExcludeText = ExcludeText;
         _settings.Mode = Mode;
         _settings.CaseSensitive = CaseSensitive;
-        _settings.IncludeLogic = IncludeLogic;
         _settings.ExcludeLogic = ExcludeLogic;
         _settings.IncludeHighlightOnly = IncludeHighlightOnly;
         _settings.AutoApply = AutoApply;

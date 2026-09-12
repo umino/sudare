@@ -109,6 +109,10 @@ public sealed class MainViewModel : ObservableObject
         Presets = new ObservableCollection<FilterPreset>(settings.Presets);
         RecentFiles = new ObservableCollection<RecentFileItem>();
 
+        Toolbar = new ToolbarVisibility(settings.ToolbarItems.Count > 0 ? settings.ToolbarItems : ToolbarCatalog.Default);
+        ToolbarMenu = new ObservableCollection<ToolbarMenuEntry>(
+            ToolbarCatalog.Items.Select(i => new ToolbarMenuEntry(i, Toolbar)));
+
         OpenCommand = new AsyncRelayCommand(OpenWithDialogAsync);
         OpenRecentCommand = new AsyncRelayCommand(p => OpenAsync(p as string ?? string.Empty));
         PasteFromClipboardCommand = new AsyncRelayCommand(LoadFromClipboardAsync);
@@ -197,6 +201,12 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<FilterPreset> Presets { get; }
     public ObservableCollection<RecentFileItem> RecentFiles { get; }
 
+    /// <summary>ツールバーに出している項目。XAML からは <c>Toolbar[highlight]</c> のように引く。</summary>
+    public ToolbarVisibility Toolbar { get; }
+
+    /// <summary>ツールバーを右クリックしたときに出す、出し入れのチェックリスト。</summary>
+    public ObservableCollection<ToolbarMenuEntry> ToolbarMenu { get; }
+
     #region フィルタ条件
 
     private string _includeText = string.Empty;
@@ -216,7 +226,24 @@ public sealed class MainViewModel : ObservableObject
     public string ExcludeText
     {
         get => _excludeText;
-        set { if (SetProperty(ref _excludeText, value)) OnFilterConditionChanged(); }
+        set
+        {
+            if (!SetProperty(ref _excludeText, value)) return;
+            // 設定やプロジェクトから中身が入ってきたら開く。畳むのは利用者の操作にまかせる
+            if (value.Length > 0) ExcludeExpanded = true;
+            OnFilterConditionChanged();
+        }
+    }
+
+    private bool _excludeExpanded;
+
+    /// <summary>
+    /// 「除外」欄を開いているか。使うまでは 1 行に畳んでおき、縦を「含む」とマーカーに回す。
+    /// </summary>
+    public bool ExcludeExpanded
+    {
+        get => _excludeExpanded;
+        set => SetProperty(ref _excludeExpanded, value);
     }
 
     private MatchMode _mode = MatchMode.Plain;
@@ -581,25 +608,20 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private bool _highlightMatches = true;
-    public bool HighlightMatches
-    {
-        get => _highlightMatches;
-        set { if (SetProperty(ref _highlightMatches, value)) UpdateHighlight(); }
-    }
-
-    private bool _highlightWholeLine;
+    private Models.HighlightMode _highlightMode = Models.HighlightMode.Match;
 
     /// <summary>
-    /// 「含む」に一致した行を、一致箇所ではなく行全体の背景で塗るか。
+    /// 本文の強調の仕方。なし / 一致箇所 / 行全体 の 3 段階。
     /// </summary>
     /// <remarks>
-    /// 検索語は従来どおり一致箇所だけを塗る（行の色の上に重ねて、どこに一致したかを示す）。
+    /// 以前は「強調するか」と「行全体を塗るか」の 2 つの真偽値だったが、後者は前者に従属していて
+    /// チェックボックス 2 つでは関係が見えなかったため、1 つの段階にまとめた。
+    /// 検索語はどの段階でも一致箇所だけを塗る（行の色の上に重ねて、どこに一致したかを示す）。
     /// </remarks>
-    public bool HighlightWholeLine
+    public Models.HighlightMode HighlightMode
     {
-        get => _highlightWholeLine;
-        set { if (SetProperty(ref _highlightWholeLine, value)) UpdateHighlight(); }
+        get => _highlightMode;
+        set { if (SetProperty(ref _highlightMode, value)) UpdateHighlight(); }
     }
 
     private double _fontSize = 13;
@@ -646,13 +668,6 @@ public sealed class MainViewModel : ObservableObject
         set { if (SetProperty(ref _searchText, value)) UpdateHighlight(); }
     }
 
-    private string _goToLineText = string.Empty;
-    public string GoToLineText
-    {
-        get => _goToLineText;
-        set => SetProperty(ref _goToLineText, value);
-    }
-
     private int _selectedIndex = -1;
     public int SelectedIndex
     {
@@ -672,6 +687,9 @@ public sealed class MainViewModel : ObservableObject
     }
 
     public bool HasDocument => !_document.IsEmptyDocument;
+
+    /// <summary>操作バーに出す、開いているログの名前（パスはツールチップで見せる）。</summary>
+    public string DocumentName => HasDocument ? _document.DisplayName : "(未読み込み)";
 
     private bool _isBusy;
     public bool IsBusy
@@ -1052,6 +1070,7 @@ public sealed class MainViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(HasDocument));
+        OnPropertyChanged(nameof(DocumentName));
         OnPropertyChanged(nameof(Title));
         ReloadCommand.RaiseCanExecuteChanged();
         CloseFileCommand.RaiseCanExecuteChanged();
@@ -1130,8 +1149,11 @@ public sealed class MainViewModel : ObservableObject
             SelectedEncoding = TextEncodings.FromKey(project.EncodingKey);
             WordWrap = project.WordWrap;
             ShowLineNumbers = project.ShowLineNumbers;
-            HighlightMatches = project.HighlightMatches;
-            HighlightWholeLine = project.HighlightWholeLine;
+            // 段階を持たない旧形式では、2 つの真偽値から組み立てる
+            HighlightMode = project.HighlightMode
+                ?? (!project.HighlightMatches ? Models.HighlightMode.None
+                    : project.HighlightWholeLine ? Models.HighlightMode.WholeLine
+                    : Models.HighlightMode.Match);
             if (project.FontSize >= 6) FontSize = project.FontSize;
             if (!string.IsNullOrWhiteSpace(project.FontFamily)) FontFamilyName = project.FontFamily;
             SearchText = project.SearchText;
@@ -1274,8 +1296,9 @@ public sealed class MainViewModel : ObservableObject
             MarkerColors = ordered.Select(i => _markedLines[i]).ToList(),
             WordWrap = WordWrap,
             ShowLineNumbers = ShowLineNumbers,
-            HighlightMatches = HighlightMatches,
-            HighlightWholeLine = HighlightWholeLine,
+            HighlightMode = HighlightMode,
+            HighlightMatches = HighlightMode != Models.HighlightMode.None,
+            HighlightWholeLine = HighlightMode == Models.HighlightMode.WholeLine,
             FontSize = FontSize,
             FontFamily = FontFamilyName,
             SearchText = SearchText,
@@ -1775,7 +1798,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void UpdateHighlight()
     {
-        if (!HighlightMatches)
+        if (HighlightMode == Models.HighlightMode.None)
         {
             View.Highlight = HighlightRuleSet.Empty;
             return;
@@ -1783,7 +1806,8 @@ public sealed class MainViewModel : ObservableObject
 
         var rules = new List<HighlightRule>();
 
-        if (!string.IsNullOrWhiteSpace(SearchText))
+        // 行ジャンプの指定は検索語ではないので、本文には色を付けない
+        if (!string.IsNullOrWhiteSpace(SearchText) && !IsLineJump(SearchText))
         {
             try
             {
@@ -1804,7 +1828,7 @@ public sealed class MainViewModel : ObservableObject
             try
             {
                 rules.Add(new HighlightRule(PatternMatcher.Create(line.Text, Mode, CaseSensitive), line.Color,
-                                            paintsWholeLine: HighlightWholeLine));
+                                            paintsWholeLine: HighlightMode == Models.HighlightMode.WholeLine));
             }
             catch (FilterPatternException)
             {
@@ -1875,6 +1899,9 @@ public sealed class MainViewModel : ObservableObject
     {
         if (string.IsNullOrEmpty(SearchText) || Lines.Count == 0) return;
 
+        // 「:1234」と書かれていたら、検索ではなく行ジャンプとして扱う（専用の入力欄を置かない代わり）
+        if (IsLineJump(SearchText)) { GoToLine(); return; }
+
         PatternMatcher matcher;
         try
         {
@@ -1902,10 +1929,14 @@ public sealed class MainViewModel : ObservableObject
         UpdateStatus();
     }
 
+    /// <summary>検索欄の内容が行ジャンプの指定（<c>:1234</c>）か。</summary>
+    public static bool IsLineJump(string text) => text.StartsWith(':');
+
+    /// <summary>検索欄に書かれた <c>:1234</c> の行へ移動する。</summary>
     private void GoToLine()
     {
         if (Lines.Count == 0) return;
-        if (!int.TryParse(GoToLineText.Trim(), out int lineNumber) || lineNumber <= 0) return;
+        if (!int.TryParse(SearchText.TrimStart(':').Trim(), out int lineNumber) || lineNumber <= 0) return;
 
         int index = Lines.FromLineNumber(lineNumber);
         if (index < 0) return;
@@ -1989,8 +2020,11 @@ public sealed class MainViewModel : ObservableObject
             ContextLines = Math.Clamp(_settings.ContextLines, 0, MaxContextLines);
             WordWrap = _settings.WordWrap;
             ShowLineNumbers = _settings.ShowLineNumbers;
-            HighlightMatches = _settings.HighlightMatches;
-            HighlightWholeLine = _settings.HighlightWholeLine;
+            // 段階を持たない古い設定では、2 つの真偽値から組み立てる
+            HighlightMode = _settings.HighlightMode
+                ?? (!_settings.HighlightMatches ? Models.HighlightMode.None
+                    : _settings.HighlightWholeLine ? Models.HighlightMode.WholeLine
+                    : Models.HighlightMode.Match);
             FontSize = _settings.FontSize <= 0 ? 13 : _settings.FontSize;
             FontFamilyName = string.IsNullOrWhiteSpace(_settings.FontFamily) ? "Consolas, MS Gothic" : _settings.FontFamily;
             FilterPaneVisible = _settings.FilterPaneVisible;
@@ -2018,8 +2052,11 @@ public sealed class MainViewModel : ObservableObject
         _settings.ContextLines = ContextLines;
         _settings.WordWrap = WordWrap;
         _settings.ShowLineNumbers = ShowLineNumbers;
-        _settings.HighlightMatches = HighlightMatches;
-        _settings.HighlightWholeLine = HighlightWholeLine;
+        // 古い版で開いても設定が失われないよう、まとめた段階と元の 2 つの両方を書く
+        _settings.HighlightMode = HighlightMode;
+        _settings.HighlightMatches = HighlightMode != Models.HighlightMode.None;
+        _settings.HighlightWholeLine = HighlightMode == Models.HighlightMode.WholeLine;
+        _settings.ToolbarItems = Toolbar.ShownIds;
         _settings.FontSize = FontSize;
         _settings.FontFamily = FontFamilyName;
         _settings.FilterPaneVisible = FilterPaneVisible;

@@ -13,6 +13,25 @@ public enum MatchMode
     Regex,
 }
 
+/// <summary>
+/// 本文の強調の仕方。
+/// </summary>
+/// <remarks>
+/// 旧設定の <c>HighlightMatches</c>（強調するか）と <c>HighlightWholeLine</c>（行全体か）は
+/// 互いに従属した 2 つの真偽値だったので、1 つの段階にまとめた。
+/// </remarks>
+public enum HighlightMode
+{
+    /// <summary>強調しない。</summary>
+    None,
+
+    /// <summary>一致した箇所だけを塗る。</summary>
+    Match,
+
+    /// <summary>一致した行の全体を塗る。</summary>
+    WholeLine,
+}
+
 /// <summary>複数パターンの結合方法。</summary>
 public enum LogicMode
 {

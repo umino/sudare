@@ -69,6 +69,12 @@ public sealed class ProjectFile
     /// <summary>一致箇所ではなく、行全体の背景を「含む」の色で塗るか。</summary>
     public bool HighlightWholeLine { get; set; }
 
+    /// <summary>
+    /// 強調の段階（なし / 一致箇所 / 行全体）。上の 2 つをまとめたもの。
+    /// 持っていない旧形式では <c>null</c> になり、読み込み側が 2 つの値から組み立てる。
+    /// </summary>
+    public HighlightMode? HighlightMode { get; set; }
+
     public double FontSize { get; set; } = 13;
     public string FontFamily { get; set; } = string.Empty;
 

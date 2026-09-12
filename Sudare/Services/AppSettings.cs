@@ -64,6 +64,20 @@ public sealed class AppSettings
     /// <summary>一致箇所ではなく、行全体の背景を「含む」の色で塗るか。</summary>
     public bool HighlightWholeLine { get; set; }
 
+    /// <summary>
+    /// 強調の段階（なし / 一致箇所 / 行全体）。
+    /// 上の 2 つの真偽値をまとめたもので、古い設定しか無いファイルでは <c>null</c> になる。
+    /// その場合は読み込み側で 2 つの値から組み立てる。書き戻すときは両方を更新するので、
+    /// 古い版で開いても設定は失われない。
+    /// </summary>
+    public HighlightMode? HighlightMode { get; set; }
+
+    /// <summary>
+    /// ツールバーに出す項目の識別子。空なら既定（強調・文字サイズ）。
+    /// 並び順は目録側で固定なので、ここには「出すかどうか」だけを持つ。
+    /// </summary>
+    public List<string> ToolbarItems { get; set; } = new();
+
     public double FontSize { get; set; } = 13;
     public string FontFamily { get; set; } = "Consolas, MS Gothic";
 

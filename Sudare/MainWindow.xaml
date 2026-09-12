@@ -410,24 +410,25 @@
                         <DockPanel Grid.Row="0" Margin="0,2,0,6">
                             <TextBlock Text="プリセット" VerticalAlignment="Center" Margin="0,0,6,0"
                                        Foreground="#FF666666" />
-                            <!-- めったに使わない「名前を付けて保存」「削除」は ▾ の中へ -->
+                            <!-- 削除はめったに使わず、押し間違えると消えるので ▾ の中へ -->
                             <Menu DockPanel.Dock="Right" Background="Transparent" VerticalAlignment="Center"
                                   Margin="2,0,0,0">
                                 <MenuItem Padding="6,1" Header="▾">
-                                    <MenuItem Header="名前を付けて保存..." Command="{Binding SavePresetCommand}"
-                                              ToolTip="下の条件に名前を付けて保存します（既存の名前を指定すると上書き）" />
-                                    <MenuItem Header="削除" Command="{Binding DeletePresetCommand}" />
+                                    <MenuItem Header="このプリセットを削除" Command="{Binding DeletePresetCommand}" />
                                 </MenuItem>
                             </Menu>
+                            <Button DockPanel.Dock="Right" Content="新規..." Command="{Binding SavePresetCommand}"
+                                    Padding="6,1" Margin="4,0,0,0"
+                                    ToolTip="いまの条件に名前を付けて、新しいプリセットとして保存します（既存の名前を入れると上書き）" />
                             <Button DockPanel.Dock="Right" Content="上書き" Command="{Binding OverwritePresetCommand}"
-                                    Padding="8,1" Margin="4,0,0,0"
+                                    Padding="6,1" Margin="4,0,0,0"
                                     ToolTip="{Binding OverwriteHint}" />
                             <Grid>
                                 <ComboBox ItemsSource="{Binding Presets}"
                                           SelectedItem="{Binding SelectedPreset}"
                                           DisplayMemberPath="Name"
                                           ToolTip="選ぶと下の条件がまとめて入れ替わります。現在の条件がどのプリセットとも一致しないときは (カスタム) と表示されます。" />
-                                <TextBlock Text="(カスタム)" Margin="8,0,0,0" VerticalAlignment="Center"
+                                <TextBlock Text="{Binding PresetStateText}" Margin="8,0,0,0" VerticalAlignment="Center"
                                            IsHitTestVisible="False" FontStyle="Italic" Foreground="#FF9E9E9E"
                                            Visibility="{Binding SelectedPreset, Converter={StaticResource NullToVisible}}" />
                             </Grid>

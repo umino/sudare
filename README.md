@@ -352,3 +352,13 @@ MVVM 構成。外部依存は `System.Text.Encoding.CodePages`（Shift_JIS 等�
 - 行の区切りは `LF` と `CRLF` のみ。`CR` だけの改行（旧 Mac 形式）は区切りとして扱いません
 - ファイル末尾を追従表示する tail 機能はありません
 - 閲覧専用です。本文の編集はできません
+
+---
+
+## バージョンとライセンス
+
+バージョンの出どころは `Sudare/Sudare.csproj` の `<Version>` 1 か所だけです。
+`ヘルプ` → `バージョン情報` と、exe のプロパティの両方がこれを読みます。
+機能を足したら 2 桁目、修正だけなら 3 桁目を上げます。
+
+[MIT License](LICENSE) / Copyright (c) 2026 umino

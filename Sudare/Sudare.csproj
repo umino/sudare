@@ -18,6 +18,21 @@
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <TieredPGO>true</TieredPGO>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
+    <!--
+      配布物に出る情報。バージョンはここが唯一の出どころで、
+      ヘルプの「バージョン情報」と exe のプロパティの両方がこれを読む。
+      機能を足したら 2 桁目、修正だけなら 3 桁目を上げる。
+    -->
+    <Version>1.0.0</Version>
+    <Product>Sudare</Product>
+    <Company>umino</Company>
+    <!-- エクスプローラの「説明」やタスクマネージャーに出るのは Description ではなく AssemblyTitle -->
+    <AssemblyTitle>Sudare - ログ閲覧に特化したテキストビューア</AssemblyTitle>
+    <Description>見たい行だけを残して読む、ログ閲覧に特化したテキストビューア</Description>
+    <Copyright>Copyright (c) 2026 umino</Copyright>
+    <!-- 既定では製品バージョンに +コミットハッシュが付く。配布物では 1.0.0 だけを見せる -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

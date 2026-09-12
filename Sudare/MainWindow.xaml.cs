@@ -2,11 +2,13 @@ using System.ComponentModel;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using Sudare.Models;
 using Sudare.Services;
 using Sudare.ViewModels;
+using Sudare.Views;
 
 namespace Sudare;
 
@@ -37,6 +39,18 @@ public partial class MainWindow : Window
     public static readonly RoutedUICommand ExpandAroundCommand =
         new("この行の前後を展開", nameof(ExpandAroundCommand), typeof(MainWindow));
 
+    /// <summary>本文で選んだ文字列を「含む」に追加する。</summary>
+    public static readonly RoutedUICommand AddSelectionToIncludeCommand =
+        new("選択文字列を「含む」に追加", nameof(AddSelectionToIncludeCommand), typeof(MainWindow));
+
+    /// <summary>本文で選んだ文字列を検索欄へ入れる。</summary>
+    public static readonly RoutedUICommand SearchSelectionCommand =
+        new("選択文字列で検索", nameof(SearchSelectionCommand), typeof(MainWindow));
+
+    /// <summary>本文で選んだ文字列だけをコピーする（行のコピーとは別）。</summary>
+    public static readonly RoutedUICommand CopySelectionTextCommand =
+        new("選択文字列をコピー", nameof(CopySelectionTextCommand), typeof(MainWindow));
+
     private readonly MainViewModel _viewModel;
     private readonly AppSettings _settings;
     private ScrollViewer? _listScrollViewer;
@@ -57,6 +71,11 @@ public partial class MainWindow : Window
         viewModel.FocusSearchRequested += () => FocusAndSelect(SearchBox);
 
         LineList.PreviewKeyDown += LineList_PreviewKeyDown;
+
+        // ドラッグで文字を選ぶ。クリック（ドラッグなし）は従来どおり行選択のまま
+        LineList.PreviewMouseLeftButtonDown += LineList_PreviewMouseLeftButtonDown;
+        LineList.PreviewMouseMove += LineList_PreviewMouseMove;
+        LineList.PreviewMouseLeftButtonUp += LineList_PreviewMouseLeftButtonUp;
     }
 
     #region ウィンドウ状態
@@ -110,6 +129,9 @@ public partial class MainWindow : Window
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.FilterPaneVisible)) ApplyFilterPaneState();
+
+        // 抽出をやり直すと行が作り直されるので、文字選択は持ち越さない
+        if (e.PropertyName == nameof(MainViewModel.Lines)) SetTextSelectionRow(null);
     }
 
     private void ApplyFilterPaneState()
@@ -239,6 +261,171 @@ public partial class MainWindow : Window
 
     private List<int> SelectedLineNumbers() =>
         LineList.SelectedItems.OfType<LineRow>().Select(r => r.LineNumber).ToList();
+
+    #endregion
+
+    #region 文字単位の選択
+
+    /// <summary>いま文字選択を持っている行。選択は同時に 1 行だけ。</summary>
+    private LineRow? _textSelectionRow;
+
+    private LineRow? _dragRow;
+    private TextBlock? _dragTextBlock;
+    private int _dragAnchorOffset;
+    private Point _dragOrigin;
+    private bool _draggingText;
+
+    private void LineList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _draggingText = false;
+        _dragRow = null;
+        _dragTextBlock = null;
+
+        var textBlock = FindContentTextBlock(e.OriginalSource as DependencyObject);
+        if (textBlock?.DataContext is not LineRow row) return;
+
+        _dragTextBlock = textBlock;
+        _dragRow = row;
+        _dragOrigin = e.GetPosition(LineList);
+        _dragAnchorOffset = CharOffsetAt(textBlock, e.GetPosition(textBlock));
+    }
+
+    private void LineList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _dragRow is null || _dragTextBlock is null) return;
+
+        if (!_draggingText)
+        {
+            // クリックと区別が付く距離まで動いてから、文字選択に切り替える
+            var current = e.GetPosition(LineList);
+            if (Math.Abs(current.X - _dragOrigin.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(current.Y - _dragOrigin.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+            _draggingText = true;
+            SetTextSelectionRow(_dragRow);
+            Mouse.Capture(LineList);
+        }
+
+        int offset = CharOffsetAt(_dragTextBlock, e.GetPosition(_dragTextBlock));
+        SelectRange(_dragRow, _dragAnchorOffset, offset);
+        e.Handled = true;   // ListBox 側の行ドラッグ選択を止める
+    }
+
+    private void LineList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_draggingText)
+        {
+            Mouse.Capture(null);
+            e.Handled = true;          // 行選択は変えない
+        }
+        else
+        {
+            SetTextSelectionRow(null); // ただのクリックなら文字選択は解除
+        }
+
+        _draggingText = false;
+        _dragRow = null;
+        _dragTextBlock = null;
+    }
+
+    private void SetTextSelectionRow(LineRow? row)
+    {
+        if (ReferenceEquals(_textSelectionRow, row)) return;
+        _textSelectionRow?.ClearSelection();
+        _textSelectionRow = row;
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private static void SelectRange(LineRow row, int anchor, int head)
+    {
+        int start = Math.Clamp(Math.Min(anchor, head), 0, row.Text.Length);
+        int end = Math.Clamp(Math.Max(anchor, head), 0, row.Text.Length);
+        row.SelectionStart = start;
+        row.SelectionLength = end - start;
+    }
+
+    /// <summary>クリックされた場所から、本文の TextBlock を探す（行番号の TextBlock は対象外）。</summary>
+    private static TextBlock? FindContentTextBlock(DependencyObject? source)
+    {
+        while (source is not null)
+        {
+            if (source is TextBlock textBlock)
+            {
+                return TextHighlighter.GetSourceText(textBlock) is null ? null : textBlock;
+            }
+            if (source is ListBoxItem) return null;
+            source = VisualTreeHelper.GetParent(source);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// TextBlock 上の座標を、行テキストの文字位置に直す。
+    /// </summary>
+    /// <remarks>
+    /// 強調のために本文は複数の Run に分かれているため、TextPointer の差をそのまま使うと
+    /// 要素の境界まで数に入ってしまう。テキストの分だけを数える。
+    /// </remarks>
+    private static int CharOffsetAt(TextBlock textBlock, Point point)
+    {
+        var position = textBlock.GetPositionFromPoint(point, true);
+        if (position is null) return 0;
+
+        int count = 0;
+        var p = textBlock.ContentStart;
+        while (p is not null && p.CompareTo(position) < 0)
+        {
+            if (p.GetPointerContext(LogicalDirection.Forward) == TextPointerContext.Text)
+            {
+                int runLength = p.GetTextRunLength(LogicalDirection.Forward);
+                var next = p.GetPositionAtOffset(runLength, LogicalDirection.Forward);
+                if (next is not null && next.CompareTo(position) <= 0)
+                {
+                    count += runLength;
+                    p = next;
+                    continue;
+                }
+                count += Math.Max(0, p.GetOffsetToPosition(position));
+                break;
+            }
+            p = p.GetNextContextPosition(LogicalDirection.Forward);
+        }
+        return count;
+    }
+
+    private void TextSelectionRequired(object sender, CanExecuteRoutedEventArgs e) =>
+        e.CanExecute = _textSelectionRow is { SelectionLength: > 0 };
+
+    private void AddSelectionToIncludeExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        string text = _textSelectionRow?.SelectedText ?? string.Empty;
+        if (text.Length > 0) _viewModel.AddIncludePattern(text);
+    }
+
+    private void SearchSelectionExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        string text = _textSelectionRow?.SelectedText ?? string.Empty;
+        if (text.Length == 0) return;
+
+        _viewModel.SearchText = text;
+        FocusAndSelect(SearchBox);
+    }
+
+    private void CopySelectionTextExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        string text = _textSelectionRow?.SelectedText ?? string.Empty;
+        if (text.Length == 0) return;
+
+        try
+        {
+            Clipboard.SetText(text);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"クリップボードにコピーできませんでした。\n{ex.Message}", "Sudare",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
 
     #endregion
 

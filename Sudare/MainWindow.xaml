@@ -57,6 +57,12 @@
                         Executed="ToggleMarkerColorExecuted" CanExecute="SelectionRequired" />
         <CommandBinding Command="{x:Static local:MainWindow.ExpandAroundCommand}"
                         Executed="ExpandAroundExecuted" CanExecute="SelectionRequired" />
+        <CommandBinding Command="{x:Static local:MainWindow.AddSelectionToIncludeCommand}"
+                        Executed="AddSelectionToIncludeExecuted" CanExecute="TextSelectionRequired" />
+        <CommandBinding Command="{x:Static local:MainWindow.SearchSelectionCommand}"
+                        Executed="SearchSelectionExecuted" CanExecute="TextSelectionRequired" />
+        <CommandBinding Command="{x:Static local:MainWindow.CopySelectionTextCommand}"
+                        Executed="CopySelectionTextExecuted" CanExecute="TextSelectionRequired" />
         <CommandBinding Command="{x:Static local:MainWindow.FocusSearchCommand}" Executed="FocusSearchExecuted" />
         <CommandBinding Command="{x:Static local:MainWindow.FocusGoToCommand}" Executed="FocusGoToExecuted" />
         <CommandBinding Command="{x:Static local:MainWindow.AboutCommand}" Executed="AboutExecuted" />
@@ -404,11 +410,18 @@
                         <DockPanel Grid.Row="0" Margin="0,2,0,6">
                             <TextBlock Text="プリセット" VerticalAlignment="Center" Margin="0,0,6,0"
                                        Foreground="#FF666666" />
-                            <Button DockPanel.Dock="Right" Content="削除" Command="{Binding DeletePresetCommand}"
-                                    Padding="8,1" Margin="4,0,0,0" />
-                            <Button DockPanel.Dock="Right" Content="保存" Command="{Binding SavePresetCommand}"
+                            <!-- めったに使わない「名前を付けて保存」「削除」は ▾ の中へ -->
+                            <Menu DockPanel.Dock="Right" Background="Transparent" VerticalAlignment="Center"
+                                  Margin="2,0,0,0">
+                                <MenuItem Padding="6,1" Header="▾">
+                                    <MenuItem Header="名前を付けて保存..." Command="{Binding SavePresetCommand}"
+                                              ToolTip="下の条件に名前を付けて保存します（既存の名前を指定すると上書き）" />
+                                    <MenuItem Header="削除" Command="{Binding DeletePresetCommand}" />
+                                </MenuItem>
+                            </Menu>
+                            <Button DockPanel.Dock="Right" Content="上書き" Command="{Binding OverwritePresetCommand}"
                                     Padding="8,1" Margin="4,0,0,0"
-                                    ToolTip="下の条件をまとめて名前を付けて保存します" />
+                                    ToolTip="{Binding OverwriteHint}" />
                             <Grid>
                                 <ComboBox ItemsSource="{Binding Presets}"
                                           SelectedItem="{Binding SelectedPreset}"
@@ -610,7 +623,16 @@
                                         Value="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                             </Style>
                         </ContextMenu.Resources>
-                        <MenuItem Header="コピー" InputGestureText="Ctrl+C" Command="ApplicationCommands.Copy" />
+                        <!-- 本文をドラッグして選んだ文字列に対する操作。選択が無いときは無効 -->
+                        <MenuItem Header="選択文字列を「含む」に追加"
+                                  Command="{x:Static local:MainWindow.AddSelectionToIncludeCommand}"
+                                  ToolTip="選んだ文字列を「含む」に 1 行足します（色も自動で割り当てます）" />
+                        <MenuItem Header="選択文字列で検索"
+                                  Command="{x:Static local:MainWindow.SearchSelectionCommand}" />
+                        <MenuItem Header="選択文字列をコピー"
+                                  Command="{x:Static local:MainWindow.CopySelectionTextCommand}" />
+                        <Separator />
+                        <MenuItem Header="行をコピー" InputGestureText="Ctrl+C" Command="ApplicationCommands.Copy" />
                         <MenuItem Header="行番号付きでコピー"
                                   Command="{x:Static local:MainWindow.CopyWithLineNumbersCommand}" />
                         <Separator />

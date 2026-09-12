@@ -134,6 +134,7 @@ public sealed class MainViewModel : ObservableObject
         ResetFontCommand = new RelayCommand(() => FontSize = 13);
         RemovePatternCommand = new RelayCommand(RemovePattern);
         SavePresetCommand = new RelayCommand(SavePreset);
+        OverwritePresetCommand = new RelayCommand(OverwritePreset, () => _activePreset is not null);
         DeletePresetCommand = new RelayCommand(DeletePreset, () => SelectedPreset is not null);
         OpenProjectCommand = new AsyncRelayCommand(OpenProjectWithDialogAsync);
         SaveProjectCommand = new RelayCommand(SaveProject, CanSaveProject);
@@ -174,6 +175,7 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand ResetFontCommand { get; }
     public RelayCommand RemovePatternCommand { get; }
     public RelayCommand SavePresetCommand { get; }
+    public RelayCommand OverwritePresetCommand { get; }
     public RelayCommand DeletePresetCommand { get; }
     public AsyncRelayCommand OpenProjectCommand { get; }
     public RelayCommand SaveProjectCommand { get; }
@@ -569,6 +571,38 @@ public sealed class MainViewModel : ObservableObject
         return true;
     }
 
+    /// <summary>
+    /// 本文で選んだ文字列を「含む」に 1 行足す。
+    /// </summary>
+    /// <remarks>
+    /// 末尾の入力用の空行より前に入れるので、追加したあともすぐ次を打てる。
+    /// 同じ文言が既にあるときは増やさない（同じ語が二重に色を取り合うため）。
+    /// </remarks>
+    public void AddIncludePattern(string text)
+    {
+        text = text.Trim();
+        if (text.Length == 0) return;
+
+        if (IncludePatterns.Any(p => !p.IsBlank && string.Equals(p.Text, text, StringComparison.Ordinal)))
+        {
+            StatusText = $"「{text}」は既に「含む」にあります";
+            return;
+        }
+
+        var line = new PatternLine(text, true);
+        line.PropertyChanged += OnPatternLineChanged;
+
+        int at = IncludePatterns.Count > 0 && IncludePatterns[^1].IsBlank
+            ? IncludePatterns.Count - 1
+            : IncludePatterns.Count;
+        IncludePatterns.Insert(at, line);
+
+        EnsureTrailingBlank();
+        WriteBackIncludePatterns();   // ここで IncludeText が変わり、自動適用なら抽出まで走る
+        UpdateHighlight();
+        StatusText = $"「{text}」を「含む」に追加しました";
+    }
+
     private void RemovePattern(object? parameter)
     {
         if (parameter is not PatternLine line) return;
@@ -762,6 +796,21 @@ public sealed class MainViewModel : ObservableObject
     private FilterPreset? _selectedPreset;
     private bool _syncingPreset;
 
+    /// <summary>
+    /// 直近に選んだ（または保存した）プリセット。条件を触って選択が外れても覚えておく。
+    /// </summary>
+    /// <remarks>
+    /// <see cref="SelectedPreset"/> は「今の条件と完全に一致するプリセット」なので、
+    /// 1 文字直しただけで null になる。それでは上書き先が分からず、保存のたびに名前を
+    /// 打ち直すことになり、打ち間違いで別のプリセットが増えてしまう。
+    /// </remarks>
+    private FilterPreset? _activePreset;
+
+    /// <summary>「上書き」ボタンの説明。どのプリセットに書き戻すのかを名前で見せる。</summary>
+    public string OverwriteHint => _activePreset is null
+        ? "上書きするプリセットがありません。先にプリセットを選ぶか、「名前を付けて保存」してください。"
+        : $"プリセット「{_activePreset.Name}」に現在の条件を上書きします";
+
     public FilterPreset? SelectedPreset
     {
         get => _selectedPreset;
@@ -797,6 +846,8 @@ public sealed class MainViewModel : ObservableObject
             _selectedPreset = match;
             OnPropertyChanged(nameof(SelectedPreset));
             DeletePresetCommand.RaiseCanExecuteChanged();
+            // 一致するものがあれば、それが今いじっているプリセット。外れたときは覚えたままにする
+            if (match is not null) SetActivePreset(match);
         }
         finally
         {
@@ -816,6 +867,8 @@ public sealed class MainViewModel : ObservableObject
 
     private void ApplyPreset(FilterPreset preset)
     {
+        SetActivePreset(preset);
+
         bool previous = _initializing;
         _initializing = true;
         try
@@ -836,6 +889,38 @@ public sealed class MainViewModel : ObservableObject
         _ = ApplyFilterAsync();
     }
 
+    private void SetActivePreset(FilterPreset? preset)
+    {
+        if (ReferenceEquals(_activePreset, preset)) return;
+        _activePreset = preset;
+        OnPropertyChanged(nameof(OverwriteHint));
+        OverwritePresetCommand.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>現在の条件を、直近に使ったプリセットへ名前を聞かずに書き戻す。</summary>
+    private void OverwritePreset()
+    {
+        if (_activePreset is null) return;
+
+        StoreConditionsInto(_activePreset);
+        // 条件が一致するようになったので、(カスタム) だった選択が戻る
+        SyncSelectedPresetWithConditions();
+        StatusText = $"プリセット「{_activePreset.Name}」を上書きしました";
+    }
+
+    /// <summary>今の抽出条件をプリセットへ写す（名前は触らない）。</summary>
+    private void StoreConditionsInto(FilterPreset preset)
+    {
+        preset.Include = IncludeText;
+        preset.IncludeColors = CurrentIncludeColors();
+        preset.Exclude = ExcludeText;
+        preset.Mode = Mode;
+        preset.CaseSensitive = CaseSensitive;
+        preset.IncludeLogic = IncludeLogic;
+        preset.ExcludeLogic = ExcludeLogic;
+        preset.IncludeHighlightOnly = IncludeHighlightOnly;
+    }
+
     private void SavePreset()
     {
         string suggested = SelectedPreset?.Name ?? string.Empty;
@@ -848,21 +933,16 @@ public sealed class MainViewModel : ObservableObject
         preset ??= new FilterPreset();
 
         preset.Name = name;
-        preset.Include = IncludeText;
-        preset.IncludeColors = CurrentIncludeColors();
-        preset.Exclude = ExcludeText;
-        preset.Mode = Mode;
-        preset.CaseSensitive = CaseSensitive;
-        preset.IncludeLogic = IncludeLogic;
-        preset.ExcludeLogic = ExcludeLogic;
-        preset.IncludeHighlightOnly = IncludeHighlightOnly;
+        StoreConditionsInto(preset);
 
         if (isNew) Presets.Add(preset);
 
         _initializing = true;
         SelectedPreset = preset;
         _initializing = false;
+        SetActivePreset(preset);
         DeletePresetCommand.RaiseCanExecuteChanged();
+        StatusText = isNew ? $"プリセット「{name}」を保存しました" : $"プリセット「{name}」を上書きしました";
     }
 
     private void DeletePreset()
@@ -876,6 +956,7 @@ public sealed class MainViewModel : ObservableObject
         SelectedPreset = null;
         _initializing = false;
         Presets.Remove(target);
+        if (ReferenceEquals(_activePreset, target)) SetActivePreset(null);
     }
 
     #endregion

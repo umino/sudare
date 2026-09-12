@@ -344,7 +344,14 @@ public partial class MainWindow : Window
         row.SelectionLength = end - start;
     }
 
-    /// <summary>クリックされた場所から、本文の TextBlock を探す（行番号の TextBlock は対象外）。</summary>
+    /// <summary>
+    /// クリックされた場所から、本文の TextBlock を探す（行番号の TextBlock は対象外）。
+    /// </summary>
+    /// <remarks>
+    /// 強調表示があると本文は <c>Run</c> に分かれ、クリックの発生元もその <c>Run</c> になる。
+    /// <c>Run</c> は Visual ではなく ContentElement なので、<see cref="VisualTreeHelper"/> に
+    /// 渡すと例外になる。要素の種類で辿り方を変える。
+    /// </remarks>
     private static TextBlock? FindContentTextBlock(DependencyObject? source)
     {
         while (source is not null)
@@ -354,7 +361,8 @@ public partial class MainWindow : Window
                 return TextHighlighter.GetSourceText(textBlock) is null ? null : textBlock;
             }
             if (source is ListBoxItem) return null;
-            source = VisualTreeHelper.GetParent(source);
+
+            source = source is Visual ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source);
         }
         return null;
     }

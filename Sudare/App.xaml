@@ -332,7 +332,9 @@
                                TextWrapping="{Binding Tag.TextWrapping, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                MinWidth="{Binding Tag.ContentMinWidth, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                v:TextHighlighter.SourceText="{Binding Text}"
-                               v:TextHighlighter.Rules="{Binding Tag.Highlight, RelativeSource={RelativeSource AncestorType=ListBox}}">
+                               v:TextHighlighter.Rules="{Binding Tag.Highlight, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                               v:TextHighlighter.SelectionStart="{Binding SelectionStart}"
+                               v:TextHighlighter.SelectionLength="{Binding SelectionLength}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Style.Triggers>

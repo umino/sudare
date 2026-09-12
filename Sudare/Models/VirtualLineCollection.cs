@@ -51,6 +51,51 @@ public sealed class LineRow : INotifyPropertyChanged
         }
     }
 
+    private int _selectionStart;
+    private int _selectionLength;
+
+    /// <summary>
+    /// この行の中で文字単位に選択されている範囲の開始位置。
+    /// </summary>
+    /// <remarks>
+    /// 選択は 1 行の中だけで持つ。行をまたぐ選択は扱わない
+    /// （まとめて取り出したいときは、従来どおり行選択してコピーする）。
+    /// </remarks>
+    public int SelectionStart
+    {
+        get => _selectionStart;
+        internal set
+        {
+            if (_selectionStart == value) return;
+            _selectionStart = value;
+            PropertyChanged?.Invoke(this, SelectionStartArgs);
+        }
+    }
+
+    /// <summary>選択されている文字数。0 なら選択なし。</summary>
+    public int SelectionLength
+    {
+        get => _selectionLength;
+        internal set
+        {
+            if (_selectionLength == value) return;
+            _selectionLength = value;
+            PropertyChanged?.Invoke(this, SelectionLengthArgs);
+        }
+    }
+
+    /// <summary>選択されている文字列。選択が無ければ空。</summary>
+    public string SelectedText =>
+        _selectionLength <= 0 || _selectionStart < 0 || _selectionStart + _selectionLength > Text.Length
+            ? string.Empty
+            : Text.Substring(_selectionStart, _selectionLength);
+
+    internal void ClearSelection()
+    {
+        SelectionLength = 0;
+        SelectionStart = 0;
+    }
+
     /// <summary>マーカーの有無。</summary>
     public bool IsMarked => _markerColorIndex >= 0;
 
@@ -65,6 +110,8 @@ public sealed class LineRow : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    private static readonly PropertyChangedEventArgs SelectionStartArgs = new(nameof(SelectionStart));
+    private static readonly PropertyChangedEventArgs SelectionLengthArgs = new(nameof(SelectionLength));
     private static readonly PropertyChangedEventArgs MarkedChangedArgs = new(nameof(IsMarked));
     private static readonly PropertyChangedEventArgs AccentChangedArgs = new(nameof(MarkerAccentBrush));
     private static readonly PropertyChangedEventArgs RowChangedArgs = new(nameof(MarkerRowBrush));

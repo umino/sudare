@@ -1833,6 +1833,19 @@ public sealed class MainViewModel : ObservableObject
             : string.Concat(trimmed[..MarkerPreviewLength], "…");
     }
 
+    /// <summary>
+    /// いま選んでいるマーカーの行へ、選択が変わっていなくても移動する。
+    /// </summary>
+    /// <remarks>
+    /// 移動は <see cref="SelectedMarker"/> が変わったときに走るので、同じ項目をもう一度
+    /// クリックしても何も起きない。「さっきの行へ戻りたい」ときに反応しないと分かりにくいため、
+    /// 一覧のダブルクリックからはこちらを呼ぶ。
+    /// </remarks>
+    public void JumpToSelectedMarker()
+    {
+        if (SelectedMarker is not null) JumpToMarker(SelectedMarker);
+    }
+
     private void JumpToMarker(MarkerItem marker)
     {
         if (Lines.Count == 0) return;

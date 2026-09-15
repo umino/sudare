@@ -24,7 +24,7 @@
       ヘルプの「バージョン情報」と exe のプロパティの両方がこれを読む。
       機能を足したら 2 桁目、修正だけなら 3 桁目を上げる。
     -->
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Product>Sudare</Product>
     <Company>umino</Company>
     <!-- エクスプローラの「説明」やタスクマネージャーに出るのは Description ではなく AssemblyTitle -->

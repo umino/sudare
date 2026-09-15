@@ -48,7 +48,7 @@
     </Window.InputBindings>
 
     <Window.CommandBindings>
-        <CommandBinding Command="ApplicationCommands.Copy" Executed="CopyExecuted" CanExecute="CopyCanExecute" />
+        <CommandBinding Command="ApplicationCommands.Copy" Executed="CopyExecuted" CanExecute="CopyAnyCanExecute" />
         <CommandBinding Command="{x:Static local:MainWindow.CopyWithLineNumbersCommand}"
                         Executed="CopyWithLineNumbersExecuted" CanExecute="CopyCanExecute" />
         <CommandBinding Command="{x:Static local:MainWindow.ToggleMarkerCommand}"

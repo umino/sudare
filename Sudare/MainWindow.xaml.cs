@@ -76,6 +76,33 @@ public partial class MainWindow : Window
         LineList.PreviewMouseLeftButtonDown += LineList_PreviewMouseLeftButtonDown;
         LineList.PreviewMouseMove += LineList_PreviewMouseMove;
         LineList.PreviewMouseLeftButtonUp += LineList_PreviewMouseLeftButtonUp;
+
+        // 同じマーカーをもう一度クリックしても選択が変わらず移動しないので、ダブルクリックを拾う
+        MarkerList.MouseDoubleClick += MarkerList_MouseDoubleClick;
+    }
+
+    private void MarkerList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        // 一覧の余白をダブルクリックしたときは何もしない
+        if (FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject) is null) return;
+        _viewModel.JumpToSelectedMarker();
+    }
+
+    /// <summary>
+    /// クリックされた場所から、指定した種類の親を探す。
+    /// </summary>
+    /// <remarks>
+    /// 発生元が <c>Run</c> のような ContentElement のことがあり、
+    /// <see cref="VisualTreeHelper"/> にそのまま渡すと例外になるので、種類で辿り方を変える。
+    /// </remarks>
+    private static T? FindAncestor<T>(DependencyObject? source) where T : DependencyObject
+    {
+        while (source is not null)
+        {
+            if (source is T match) return match;
+            source = source is Visual ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source);
+        }
+        return null;
     }
 
     #region ウィンドウ状態
@@ -422,8 +449,40 @@ public partial class MainWindow : Window
     private void CopySelectionTextExecuted(object sender, ExecutedRoutedEventArgs e)
     {
         string text = _textSelectionRow?.SelectedText ?? string.Empty;
-        if (text.Length == 0) return;
+        if (text.Length > 0) CopyToClipboard(text);
+    }
 
+    #endregion
+
+    #region コピー
+
+    private void CopyCanExecute(object sender, CanExecuteRoutedEventArgs e) =>
+        e.CanExecute = LineList.SelectedItems.Count > 0;
+
+    /// <summary>行を選んでいなくても、文字を選んでいればコピーできる。</summary>
+    private void CopyAnyCanExecute(object sender, CanExecuteRoutedEventArgs e) =>
+        e.CanExecute = LineList.SelectedItems.Count > 0 || _textSelectionRow is { SelectionLength: > 0 };
+
+    /// <summary>
+    /// 文字を選んでいるあいだは、その文字列だけをコピーする。
+    /// </summary>
+    /// <remarks>
+    /// 文字を選んだうえで行のコピーが欲しい場面はまず無いので、選択があるときはそちらを優先する。
+    /// 何も選んでいなければ、従来どおり選択行をまとめてコピーする。
+    /// </remarks>
+    private void CopyExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        string selected = _textSelectionRow?.SelectedText ?? string.Empty;
+        if (selected.Length > 0)
+        {
+            CopyToClipboard(selected);
+            return;
+        }
+        CopySelection(false);
+    }
+
+    private void CopyToClipboard(string text)
+    {
         try
         {
             Clipboard.SetText(text);
@@ -434,15 +493,6 @@ public partial class MainWindow : Window
                             MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
-
-    #endregion
-
-    #region コピー
-
-    private void CopyCanExecute(object sender, CanExecuteRoutedEventArgs e) =>
-        e.CanExecute = LineList.SelectedItems.Count > 0;
-
-    private void CopyExecuted(object sender, ExecutedRoutedEventArgs e) => CopySelection(false);
 
     private void CopyWithLineNumbersExecuted(object sender, ExecutedRoutedEventArgs e) => CopySelection(true);
 
